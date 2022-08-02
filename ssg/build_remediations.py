@@ -151,8 +151,8 @@ def get_populate_replacement(remediation_type, text):
 
     if remediation_type == 'bash':
         # Extract variable name
-        varname = re.search(r'\npopulate (\S+)\n',
-                            text, re.DOTALL).group(1)
+        varname = re.search(r'\npopulate (\S+)\n', text, re.DOTALL)[1]
+
         # Define fix text part to contribute to main fix text
         fixtextcontribution = '\n%s="' % varname
         return (varname, fixtextcontribution)
@@ -218,7 +218,7 @@ def parse_from_file_without_jinja(file_path):
 class Remediation(object):
     def __init__(self, file_path, remediation_type):
         self.file_path = file_path
-        self.local_env_yaml = dict()
+        self.local_env_yaml = {}
 
         self.metadata = defaultdict(lambda: None)
 
@@ -316,15 +316,15 @@ class BashRemediation(Remediation):
                     all_conditions += " && { " + " || ".join(rule_specific_conditionals) + "; }"
                 else:
                     all_conditions = " || ".join(rule_specific_conditionals)
-            wrapped_fix_text.append("if {0}; then".format(all_conditions))
-            wrapped_fix_text.append("")
-            # It is possible to indent the original body of the remediation with textwrap.indent(),
-            # however, it is not supported by python2, and there is a risk of breaking remediations
-            # For example, remediations with a here-doc block could be affected.
-            wrapped_fix_text.append("{0}".format(stripped_fix_text))
-            wrapped_fix_text.append("")
-            wrapped_fix_text.append("else")
-            wrapped_fix_text.append("    >&2 echo 'Remediation is not applicable, nothing was done'")
+            wrapped_fix_text.extend(("if {0}; then".format(all_conditions), ""))
+            wrapped_fix_text.extend(("{0}".format(stripped_fix_text), ""))
+            wrapped_fix_text.extend(
+                (
+                    "else",
+                    "    >&2 echo 'Remediation is not applicable, nothing was done'",
+                )
+            )
+
             wrapped_fix_text.append("fi")
 
             remediation = namedtuple('remediation', ['contents', 'config'])
@@ -405,8 +405,7 @@ class AnsibleRemediation(Remediation):
         tags.insert(0, "{0}_severity".format(self.associated_rule.severity))
         tags.insert(0, self.associated_rule.id_)
 
-        cce_num = self._get_cce()
-        if cce_num:
+        if cce_num := self._get_cce():
             tags.append("{0}".format(cce_num))
 
         refs = self.get_references()
@@ -427,8 +426,7 @@ class AnsibleRemediation(Remediation):
         return result
 
     def _get_rule_reference(self, ref_class):
-        refs = self.associated_rule.references.get(ref_class, "")
-        if refs:
+        if refs := self.associated_rule.references.get(ref_class, ""):
             return refs.split(",")
         else:
             return []
@@ -490,18 +488,18 @@ class AnsibleRemediation(Remediation):
                 c for c in rule_specific_conditionals if "in ansible_facts.packages" not in c]
 
         if inherited_conditionals:
-            additional_when = additional_when + inherited_conditionals
+            additional_when += inherited_conditionals
 
         if rule_specific_conditionals:
             additional_when.append(" or ".join(rule_specific_conditionals))
 
         to_update.setdefault("when", "")
-        new_when = ssg.yaml.update_yaml_list_or_string(to_update["when"], additional_when,
-                                                       prepend=True)
-        if not new_when:
-            to_update.pop("when")
-        else:
+        if new_when := ssg.yaml.update_yaml_list_or_string(
+            to_update["when"], additional_when, prepend=True
+        ):
             to_update["when"] = new_when
+        else:
+            to_update.pop("when")
 
     def update(self, parsed, config):
         # We split the remediation update in three steps
@@ -640,7 +638,7 @@ def write_fixes_to_dir(fixes, remediation_type, output_dir):
     try:
         extension = REMEDIATION_TO_EXT_MAP[remediation_type]
     except KeyError:
-        raise ValueError("Unknown remediation type %s." % remediation_type)
+        raise ValueError(f"Unknown remediation type {remediation_type}.")
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -914,15 +912,14 @@ def expand_xccdf_subs(fix, remediation_type, remediation_functions):
                             xccdfvarsub.tail = '"' + '\n'
                         # Append the new subelement to the fix element
                         fix.append(xccdfvarsub)
-                    # This chunk contains call of other remediation function
                     else:
                         # Extract remediation function name
-                        funcname = re.search(r'\n\s*(\S+)(| .*)\n',
-                                             fixparts[idx],
-                                             re.DOTALL).group(1)
+                        funcname = re.search(
+                            r'\n\s*(\S+)(| .*)\n', fixparts[idx], re.DOTALL
+                        )[1]
+
                         # Define new XCCDF <sub> element for the function
-                        xccdffuncsub = ElementTree.Element(
-                            "sub", idref='function_%s' % funcname)
+                        xccdffuncsub = ElementTree.Element("sub", idref=f'function_{funcname}')
                         # Append original function call into tail of the
                         # subelement
                         xccdffuncsub.tail = fixparts[idx]

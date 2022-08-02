@@ -90,7 +90,7 @@ def _benchmark_profile_pair_sort_key(benchmark_id, profile_id, profile_title):
     if (benchmark_id.endswith("_RHEL-7") or
             benchmark_id.endswith("_RHEL-6") or
             benchmark_id.endswith("_RHEL-5")):
-        benchmark_id = "AAA" + benchmark_id
+        benchmark_id = f"AAA{benchmark_id}"
 
     # The default profile comes last
     if not profile_id:
@@ -114,14 +114,14 @@ def get_benchmark_profile_pairs(input_tree, benchmarks):
 
 
 def _is_blacklisted_profile(profile_id):
-    for blacklisted_id in PROFILE_ID_BLACKLIST:
-        if profile_id.endswith(blacklisted_id):
-            return True
-    return False
+    return any(
+        profile_id.endswith(blacklisted_id)
+        for blacklisted_id in PROFILE_ID_BLACKLIST
+    )
 
 
 def _get_guide_filename(path_base, profile_id, benchmark_id, benchmarks):
-    profile_id_for_path = "default" if not profile_id else profile_id
+    profile_id_for_path = profile_id or "default"
     benchmark_id_for_path = benchmark_id
     if benchmark_id_for_path.startswith(OSCAP_DS_STRING):
         benchmark_id_for_path = \
@@ -130,12 +130,9 @@ def _get_guide_filename(path_base, profile_id, benchmark_id, benchmarks):
     if len(benchmarks) == 1 or len(benchmark_id_for_path) == len("RHEL-X"):
         # treat the base RHEL benchmark as a special case to preserve
         # old guide paths and old URLs that people may be relying on
-        return "%s-guide-%s.html" % (path_base,
-                                     get_profile_short_id(profile_id_for_path))
+        return f"{path_base}-guide-{get_profile_short_id(profile_id_for_path)}.html"
 
-    return "%s-%s-guide-%s.html" % \
-        (path_base, benchmark_id_for_path,
-         get_profile_short_id(profile_id_for_path))
+    return f"{path_base}-{benchmark_id_for_path}-guide-{get_profile_short_id(profile_id_for_path)}.html"
 
 
 def get_output_guide_paths(benchmarks, benchmark_profile_pairs, path_base,
@@ -186,9 +183,12 @@ def fill_queue(benchmarks, benchmark_profile_pairs, input_path, path_base,
         guide_path = os.path.join(output_dir, guide_filename)
 
         index_links.append(
-            "<a target=\"guide\" href=\"%s\">%s</a>" %
-            (guide_filename, "%s in %s" % (profile_title, benchmark_id))
+            (
+                "<a target=\"guide\" href=\"%s\">%s</a>"
+                % (guide_filename, f"{profile_title} in {benchmark_id}")
+            )
         )
+
 
         if benchmark_id not in index_options:
             index_options[benchmark_id] = []

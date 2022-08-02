@@ -26,8 +26,10 @@ def get_fix_path(rule_obj, lang, fix_id):
         raise ValueError("Malformed rule_obj")
 
     if fix_id not in rule_obj['remediations'][lang]:
-        raise ValueError("Unknown fix_id:%s for rule_id:%s and lang:%s" %
-                         (fix_id, rule_obj['id'], lang))
+        raise ValueError(
+            f"Unknown fix_id:{fix_id} for rule_id:{rule_obj['id']} and lang:{lang}"
+        )
+
 
     return os.path.join(rule_obj['dir'], lang, fix_id)
 
@@ -68,7 +70,7 @@ def parse_platform(fix_contents):
     """
 
     matched_line = None
-    for line_num in range(0, len(fix_contents)):
+    for line_num in range(len(fix_contents)):
         line = fix_contents[line_num]
         if line.startswith('#') and '=' in line:
             key, value = line.strip('#').split('=', 1)
@@ -90,7 +92,7 @@ def set_applicable_platforms(fix_contents, new_platforms):
 
     new_platforms_str = "# platform = " + ",".join(sorted(new_platforms))
 
-    new_contents = fix_contents[0:platform_line]
+    new_contents = fix_contents[:platform_line]
     new_contents.extend([new_platforms_str])
     new_contents.extend(fix_contents[platform_line+1:])
 

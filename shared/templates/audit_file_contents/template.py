@@ -10,6 +10,6 @@ def preprocess(data, lang):
         data["filepath_id"] = pathid
 
     # The build system converts "<",">" and "&" for us
-    if lang == "bash" or lang == "ansible":
+    if lang in ["bash", "ansible"]:
         data["contents"] = unescape(data["contents"])
     return data

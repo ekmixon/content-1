@@ -8,7 +8,7 @@ def preprocess(data, lang):
     data["name"] = name
     if lang == "oval":
         data["id"] = data["_rule_id"]
-        data["title"] = "Record Any Attempts to Run " + name
+        data["title"] = f"Record Any Attempts to Run {name}"
         data["path"] = path.replace("/", "\\/")
     elif lang == "kubernetes":
         npath = path.replace("/", "_")

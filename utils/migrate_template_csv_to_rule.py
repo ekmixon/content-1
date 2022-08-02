@@ -17,7 +17,6 @@ def escape_path(path):
 
 def accounts_password_csv_to_dict(csv_line, csv_data):
     accounts_password = OrderedDict()
-    data_accounts_password = {}
     accounts_password["name"] = "accounts_password"
 
     variable = csv_line[0]
@@ -25,8 +24,7 @@ def accounts_password_csv_to_dict(csv_line, csv_data):
 
     operation = csv_line[1]
 
-    data_accounts_password["variable"] = variable
-    data_accounts_password["operation"] = operation
+    data_accounts_password = {"variable": variable, "operation": operation}
     accounts_password["vars"] = data_accounts_password
     csv_data[rule_id] = accounts_password
     return accounts_password
@@ -34,16 +32,13 @@ def accounts_password_csv_to_dict(csv_line, csv_data):
 
 def audit_rules_execution_csv_to_dict(csv_line, csv_data):
     audit_rules_execution = OrderedDict()
-    data_audit_rules_execution = {}
     audit_rules_execution["name"] = "audit_rules_privileged_commands"
 
     path = csv_line[0]
     name = escape_path(os.path.basename(path))
     rule_id = f"audit_rules_execution_{name}"
 
-    # create_audit_rules_execution.py escapes the '/' when generating the OVAL
-    # This is not actually necessary
-    data_audit_rules_execution["path"] = path
+    data_audit_rules_execution = {"path": path}
     audit_rules_execution["vars"] = data_audit_rules_execution
 
     csv_data[rule_id] = audit_rules_execution
@@ -52,16 +47,13 @@ def audit_rules_execution_csv_to_dict(csv_line, csv_data):
 
 def audit_rules_privileged_commands_csv_to_dict(csv_line, csv_data):
     audit_rules_privileged_commands = OrderedDict()
-    data_audit_rules_privileged_commands = {}
     audit_rules_privileged_commands["name"] = "audit_rules_privileged_commands"
 
     path = csv_line[0]
     name = escape_path(os.path.basename(path))
     rule_id = f"audit_rules_privileged_commands_{name}"
 
-    # create_audit_rules_privileged_commands.py escapes the '/' when generating the OVAL
-    # This is not actually necessary
-    data_audit_rules_privileged_commands["path"] = path
+    data_audit_rules_privileged_commands = {"path": path}
     audit_rules_privileged_commands["vars"] = data_audit_rules_privileged_commands
 
     csv_data[rule_id] = audit_rules_privileged_commands
@@ -70,13 +62,12 @@ def audit_rules_privileged_commands_csv_to_dict(csv_line, csv_data):
 
 def audit_rules_dac_modification_csv_to_dict(csv_line, csv_data):
     audit_rules_dac_modification = OrderedDict()
-    data_audit_rules_dac_modification = {}
     audit_rules_dac_modification["name"] = "audit_rules_dac_modification"
 
     attr = csv_line[0]
     rule_id = f"audit_rules_dac_modification_{attr}"
 
-    data_audit_rules_dac_modification["attr"] = attr
+    data_audit_rules_dac_modification = {"attr": attr}
     audit_rules_dac_modification["vars"] = data_audit_rules_dac_modification
 
     csv_data[rule_id] = audit_rules_dac_modification
@@ -85,13 +76,12 @@ def audit_rules_dac_modification_csv_to_dict(csv_line, csv_data):
 
 def audit_rules_file_deletion_events_csv_to_dict(csv_line, csv_data):
     audit_rules_file_deletion_events = OrderedDict()
-    data_audit_rules_file_deletion_events = {}
     audit_rules_file_deletion_events["name"] = "audit_rules_file_deletion_events"
 
     name = csv_line[0]
     rule_id = f"audit_rules_file_deletion_events_{name}"
 
-    data_audit_rules_file_deletion_events["name"] = name
+    data_audit_rules_file_deletion_events = {"name": name}
     audit_rules_file_deletion_events["vars"] = data_audit_rules_file_deletion_events
 
     csv_data[rule_id] = audit_rules_file_deletion_events
@@ -100,14 +90,13 @@ def audit_rules_file_deletion_events_csv_to_dict(csv_line, csv_data):
 
 def audit_rules_login_events_csv_to_dict(csv_line, csv_data):
     audit_rules_login_events = OrderedDict()
-    data_audit_rules_login_events = {}
     audit_rules_login_events["name"] = "audit_rules_login_events"
 
     path = csv_line[0]
     name = escape_path(os.path.basename(path))
     rule_id = f"audit_rules_login_events_{name}"
 
-    data_audit_rules_login_events["path"] = path
+    data_audit_rules_login_events = {"path": path}
     audit_rules_login_events["vars"] = data_audit_rules_login_events
 
     csv_data[rule_id] = audit_rules_login_events
@@ -116,7 +105,6 @@ def audit_rules_login_events_csv_to_dict(csv_line, csv_data):
 
 def audit_rules_path_syscall_csv_to_dict(csv_line, csv_data):
     audit_rules_path_syscall = OrderedDict()
-    data_audit_rules_path_syscall = {}
     audit_rules_path_syscall["name"] = "audit_rules_path_syscall"
 
     path = csv_line[0]
@@ -126,9 +114,12 @@ def audit_rules_path_syscall_csv_to_dict(csv_line, csv_data):
     path_id = escape_path(path)[1:]
     rule_id = f"audit_rules_{path_id}_{syscall}"
 
-    data_audit_rules_path_syscall["path"] = path
-    data_audit_rules_path_syscall["syscall"] = syscall
-    data_audit_rules_path_syscall["pos"] = arg_pos
+    data_audit_rules_path_syscall = {
+        "path": path,
+        "syscall": syscall,
+        "pos": arg_pos,
+    }
+
     audit_rules_path_syscall["vars"] = data_audit_rules_path_syscall
 
     csv_data[rule_id] = audit_rules_path_syscall
@@ -137,13 +128,12 @@ def audit_rules_path_syscall_csv_to_dict(csv_line, csv_data):
 
 def arufm_csv_to_dict(csv_line, csv_data):
     arufm = OrderedDict()
-    data_arufm = {}
     arufm["name"] = "audit_rules_unsuccessful_file_modification"
 
     name = csv_line[0]
     rule_id = f"audit_rules_unsuccessful_file_modification_{name}"
 
-    data_arufm["name"] = name
+    data_arufm = {"name": name}
     arufm["vars"] = data_arufm
 
     csv_data[rule_id] = arufm
@@ -152,8 +142,6 @@ def arufm_csv_to_dict(csv_line, csv_data):
 
 def arufm_detailed_csv_to_dict(csv_line, csv_data):
     arufm_detailed = OrderedDict()
-    data_arufm_detailed = {}
-
     syscall = csv_line[0]
     arg_pos = csv_line[1]
 
@@ -163,8 +151,7 @@ def arufm_detailed_csv_to_dict(csv_line, csv_data):
                          "rule_order",
                          ]
 
-    data_arufm_detailed["syscall"] = syscall
-    data_arufm_detailed["pos"] = arg_pos
+    data_arufm_detailed = {"syscall": syscall, "pos": arg_pos}
     arufm_detailed["vars"] = data_arufm_detailed
 
     for suffix in template_suffixes:
@@ -178,14 +165,13 @@ def arufm_detailed_csv_to_dict(csv_line, csv_data):
 
 def arum_csv_to_dict(csv_line, csv_data):
     user_group_modification = OrderedDict()
-    data_user_group_modification = {}
     user_group_modification["name"] = "audit_rules_usergroup_modification"
 
     path = csv_line[0]
     name = escape_path(os.path.basename(path))
     rule_id = f"audit_rules_usergroup_modification_{name}"
 
-    data_user_group_modification["path"] = path
+    data_user_group_modification = {"path": path}
     user_group_modification["vars"] = data_user_group_modification
 
     csv_data[rule_id] = user_group_modification
@@ -194,7 +180,6 @@ def arum_csv_to_dict(csv_line, csv_data):
 
 def grub2_bootloader_argument_csv_to_dict(csv_line, csv_data):
     grub2_bootloader_argument = OrderedDict()
-    data_grub2_bootloader_argument = {}
     grub2_bootloader_argument["name"] = "grub2_bootloader_argument"
 
     arg_name = csv_line[0]
@@ -202,8 +187,7 @@ def grub2_bootloader_argument_csv_to_dict(csv_line, csv_data):
     rule_id = f"grub2_{arg_name}_argument"
 
     arg_name_value = f"{arg_name}={arg_value}"
-    data_grub2_bootloader_argument["arg_name"] = arg_name
-    data_grub2_bootloader_argument["arg_value"] = arg_value
+    data_grub2_bootloader_argument = {"arg_name": arg_name, "arg_value": arg_value}
     grub2_bootloader_argument["vars"] = data_grub2_bootloader_argument
 
     csv_data[rule_id] = grub2_bootloader_argument
@@ -212,13 +196,12 @@ def grub2_bootloader_argument_csv_to_dict(csv_line, csv_data):
 
 def kernel_modules_disabled_csv_to_dict(csv_line, csv_data):
     kernel_modules_disabled = OrderedDict()
-    data_kernel_modules_disabled = {}
     kernel_modules_disabled["name"] = "kernel_module_disabled"
 
     kernmod = csv_line[0]
     rule_id = f"kernel_module_{kernmod}_disabled"
 
-    data_kernel_modules_disabled["kernmodule"] = kernmod
+    data_kernel_modules_disabled = {"kernmodule": kernmod}
     kernel_modules_disabled["vars"] = data_kernel_modules_disabled
 
     csv_data[rule_id] = kernel_modules_disabled
@@ -227,7 +210,6 @@ def kernel_modules_disabled_csv_to_dict(csv_line, csv_data):
 
 def lineinfile_csv_to_dict(csv_line, csv_data, _type):
     lineinfile = OrderedDict()
-    data_lineinfile = {}
     lineinfile["name"] = f"{_type}_lineinfile"
 
     rule_id = csv_line[0]
@@ -238,10 +220,13 @@ def lineinfile_csv_to_dict(csv_line, csv_data, _type):
     else:
         missing_paramteter_pass = "false"
 
-    data_lineinfile["rule_id"] = rule_id
-    data_lineinfile["parameter"] = parameter
-    data_lineinfile["value"] = value
-    data_lineinfile["missing_parameter_pass"] = missing_parameter_pass
+    data_lineinfile = {
+        "rule_id": rule_id,
+        "parameter": parameter,
+        "value": value,
+        "missing_parameter_pass": missing_parameter_pass,
+    }
+
     lineinfile["vars"] = data_lineinfile
 
     csv_data[rule_id] = lineinfile
@@ -258,8 +243,6 @@ def sshd_lineinfile_csv_to_dict(csv_line, csv_data):
 
 def mount_options_csv_to_dict(csv_line, csv_data):
     mount_options = OrderedDict()
-    data_mount_options = {}
-
     mount_point = csv_line[0]
     mount_option = csv_line[1].strip()
 
@@ -288,13 +271,14 @@ def mount_options_csv_to_dict(csv_line, csv_data):
         rule_id = f"mount_option_{mount_option}_{point_id}"
         mount_options["name"] = f"{template_base}_{point_id}"
 
-    # Not all fields will be used by all templates, this is fine,
-    # they will just be ignored
-    data_mount_options["mountpoint"] = mount_point
-    data_mount_options["mountoption"] = mount_option
-    data_mount_options["mount_has_to_exist"] = mount_has_to_exist
-    data_mount_options["filesystem"] = filesystem
-    data_mount_options["type"] = mount_point_type
+    data_mount_options = {
+        "mountpoint": mount_point,
+        "mountoption": mount_option,
+        "mount_has_to_exist": mount_has_to_exist,
+        "filesystem": filesystem,
+        "type": mount_point_type,
+    }
+
     mount_options["vars"] = data_mount_options
 
     csv_data[rule_id] = mount_options
@@ -303,14 +287,13 @@ def mount_options_csv_to_dict(csv_line, csv_data):
 
 def mounts_csv_to_dict(csv_line, csv_data):
     mounts = OrderedDict()
-    data_mounts = {}
     mounts["name"] = "mount"
 
     mountpoint = csv_line[0]
     point_id = escape_path(mountpoint)
     rule_id = f"partition_for{point_id}"
 
-    data_mounts["mountpoint"] = mountpoint
+    data_mounts = {"mountpoint": mountpoint}
     mounts["vars"] = data_mounts
 
     csv_data[rule_id] = mounts
@@ -320,7 +303,6 @@ def mounts_csv_to_dict(csv_line, csv_data):
 # It seems there are no rules for these templated content
 def ocp_service_runtime_config_csv_to_dict(csv_line, csv_data):
     ocp_service = OrderedDict()
-    data_ocp_service = {}
     ocp_service["name"] = "ocp_service_config"
 
     process_cmd = csv_line[0]
@@ -333,10 +315,13 @@ def ocp_service_runtime_config_csv_to_dict(csv_line, csv_data):
 
     rule_id = f"ocp_service_runtime_config_{ocp_proc_id}"
 
-    data_ocp_service["ocpcmdoptionid"] = process_cmd
-    data_ocp_service["ocpprocess"] = process_cmd
-    data_ocp_service["ocpcmdoption"] = process_cmd_option
-    data_ocp_service["ocpcmdval"] = process_cmd_val
+    data_ocp_service = {
+        "ocpcmdoptionid": process_cmd,
+        "ocpprocess": process_cmd,
+        "ocpcmdoption": process_cmd_option,
+        "ocpcmdval": process_cmd_val,
+    }
+
     ocp_service["vars"] = data_ocp_service
 
     csv_data[rule_id] = ocp_service
@@ -345,19 +330,13 @@ def ocp_service_runtime_config_csv_to_dict(csv_line, csv_data):
 
 def packages_installed_csv_to_dict(csv_line, csv_data):
     package_installed = OrderedDict()
-    data_package_installed = {}
     package_installed["name"] = "package_installed"
 
     pkgname = csv_line[0]
     rule_id = f"package_{pkgname}_installed"
 
-    if len(csv_line) == 2:
-        evr = csv_line[1]
-    else:
-        evr = ""
-
-    data_package_installed["pkgname"] = pkgname
-    data_package_installed["evr"] = evr
+    evr = csv_line[1] if len(csv_line) == 2 else ""
+    data_package_installed = {"pkgname": pkgname, "evr": evr}
     package_installed["vars"] = data_package_installed
 
     csv_data[rule_id] = package_installed
@@ -366,17 +345,12 @@ def packages_installed_csv_to_dict(csv_line, csv_data):
 
 def packages_removed_csv_to_dict(csv_line, csv_data):
     package_removed = OrderedDict()
-    data_package_removed = {}
     package_removed["name"] = "package_removed"
 
     pkgname = csv_line[0]
     rule_id = f"package_{pkgname}_removed"
 
-    # Some CSVs have two fields for packages_removed, but
-    # create_package_removed.py doesn't use the second field.
-    # So just ignore it as well
-
-    data_package_removed["pkgname"] = pkgname
+    data_package_removed = {"pkgname": pkgname}
     package_removed["vars"] = data_package_removed
 
     csv_data[rule_id] = package_removed
@@ -420,36 +394,36 @@ def permissions_csv_to_dict(csv_line, csv_data):
 
     # build a string that contains the full path to the file
     # full_path maps to FILEPATH in the template
-    if file_name == '[NULL]' or file_name == '':
-        full_path = dir_path + '/'
+    if file_name in ['[NULL]', '']:
+        full_path = f'{dir_path}/'
     else:
-        full_path = dir_path + '/' + file_name
+        full_path = f'{dir_path}/{file_name}'
 
     if not re.match(r'\^.*\$', file_name, 0):
         if mode:
             rule_id = f"file_permissions{path_id}"
-            file_permissions["name"] = f"file_permissions"
+            file_permissions["name"] = "file_permissions"
             data_file_permissions["filepath"] = full_path
             data_file_permissions["filemode"] = mode
             file_permissions["vars"] = data_file_permissions
             csv_data[rule_id] = file_permissions
         if uid:
             rule_id = f"file_owner{path_id}"
-            owner["name"] = f"file_owner"
+            owner["name"] = "file_owner"
             data_owner["filepath"] = full_path
             data_owner["fileuid"] = uid
             owner["vars"] = data_owner
             csv_data[rule_id] = owner
         if gid:
             rule_id = f"file_groupowner{path_id}"
-            groupowner["name"] = f"file_groupowner"
+            groupowner["name"] = "file_groupowner"
             data_groupowner["filepath"] = full_path
             data_groupowner["filegid"] = gid
             groupowner["vars"] = data_groupowner
             csv_data[rule_id] = groupowner
 
         rule_id = f"permissions{path_id}"
-        permissions["name"] = f"permissions"
+        permissions["name"] = "permissions"
         data_permissions["filepath"] = full_path
         data_permissions["filemode"] = mode
         data_permissions["fileuid"] = uid
@@ -458,7 +432,7 @@ def permissions_csv_to_dict(csv_line, csv_data):
         csv_data[rule_id] = permissions
     else:
         rule_id = f"file_permissions{path_id}"
-        file_permissions["name"] = f"file_regex_permissions"
+        file_permissions["name"] = "file_regex_permissions"
         data_file_permissions["path"] = dir_path
         data_file_permissions["filename"] = file_name
         data_file_permissions["filemode"] = mode
@@ -473,19 +447,17 @@ def permissions_csv_to_dict(csv_line, csv_data):
 
 def selinux_booleans_csv_to_dict(csv_line, csv_data):
     selinux_boolean = OrderedDict()
-    data_selinux_boolean = {}
-
     sebool_name = csv_line[0]
     sebool_id = escape_path(sebool_name)
     rule_id = f"sebool_{sebool_id}"
 
     sebool_state = csv_line[1]
-    if sebool_state == "on" or sebool_state == "enable":
+    if sebool_state in ["on", "enable"]:
         sebool_bool = "true"
-    elif sebool_state == "off" or sebool_state == "disable":
+    elif sebool_state in ["off", "disable"]:
         sebool_bool = "false"
 
-    data_selinux_boolean["seboolid"] = sebool_id
+    data_selinux_boolean = {"seboolid": sebool_id}
     if sebool_state == "use_var":
         selinux_boolean["name"] = "sebool_var"
     else:
@@ -499,7 +471,6 @@ def selinux_booleans_csv_to_dict(csv_line, csv_data):
 
 def services_disabled_csv_to_dict(csv_line, csv_data):
     service_disabled = OrderedDict()
-    data_service_disabled = {}
     service_disabled["name"] = "service_disabled"
 
     service_name = csv_line[0]
@@ -508,9 +479,12 @@ def services_disabled_csv_to_dict(csv_line, csv_data):
 
     rule_id = f"service_{service_name}_disabled"
 
-    data_service_disabled["servicename"] = service_name
-    data_service_disabled["packagename"] = package_name
-    data_service_disabled["daemonname"] = daemon_name
+    data_service_disabled = {
+        "servicename": service_name,
+        "packagename": package_name,
+        "daemonname": daemon_name,
+    }
+
     service_disabled["vars"] = data_service_disabled
 
     csv_data[rule_id] = service_disabled
@@ -519,7 +493,6 @@ def services_disabled_csv_to_dict(csv_line, csv_data):
 
 def services_enabled_csv_to_dict(csv_line, csv_data):
     service_enabled = OrderedDict()
-    data_service_enabled = {}
     service_enabled["name"] = "service_enabled"
 
     service_name = csv_line[0]
@@ -532,9 +505,12 @@ def services_enabled_csv_to_dict(csv_line, csv_data):
 
     rule_id = f"service_{service_name}_enabled"
 
-    data_service_enabled["servicename"] = service_name
-    data_service_enabled["packagename"] = package_name
-    data_service_enabled["daemonname"] = daemon_name
+    data_service_enabled = {
+        "servicename": service_name,
+        "packagename": package_name,
+        "daemonname": daemon_name,
+    }
+
     service_enabled["vars"] = data_service_enabled
 
     csv_data[rule_id] = service_enabled
@@ -543,22 +519,20 @@ def services_enabled_csv_to_dict(csv_line, csv_data):
 
 def sysctl_values_csv_to_dict(csv_line, csv_data):
     sysctl_value = OrderedDict()
-    data_sysctl_value = {}
-
     sysctl_var = csv_line[0]
     sysctl_val = csv_line[1]
-    # Default data type for sysctl is int
-    data_type = "int"
-    if len(csv_line) == 3:
-        data_type = csv_line[2]
+    data_type = csv_line[2] if len(csv_line) == 3 else "int"
     sysctl_var_id = escape_path(sysctl_var)
     rule_id = f"sysctl_{sysctl_var_id}"
 
     sysctl_value["name"] = "sysctl"
 
-    data_sysctl_value["sysctlvar"] = sysctl_var
-    data_sysctl_value["sysctlval"] = sysctl_val
-    data_sysctl_value["datatype"] = data_type
+    data_sysctl_value = {
+        "sysctlvar": sysctl_var,
+        "sysctlval": sysctl_val,
+        "datatype": data_type,
+    }
+
     sysctl_value["vars"] = data_sysctl_value
 
     csv_data[rule_id] = sysctl_value
@@ -567,7 +541,6 @@ def sysctl_values_csv_to_dict(csv_line, csv_data):
 
 def timers_enabled_csv_to_dict(csv_line, csv_data):
     timer_enabled = OrderedDict()
-    data_timer_enabled = {}
     timer_enabled["name"] = "timer_enabled"
 
     timer_name = csv_line[0]
@@ -576,8 +549,7 @@ def timers_enabled_csv_to_dict(csv_line, csv_data):
         package_name = timer_name
     rule_id = f"timer_{timer_name}_enabled"
 
-    data_timer_enabled["timername"] = timer_name
-    data_timer_enabled["packagename"] = package_name
+    data_timer_enabled = {"timername": timer_name, "packagename": package_name}
     timer_enabled["vars"] = data_timer_enabled
 
     csv_data[rule_id] = timer_enabled
@@ -778,9 +750,8 @@ class ProductCSVData(object):
                                 for product in value_counter[value]:
                                     product_var = f"{var}@{product}"
                                     rule_vars[product_var] = value
-                else:
-                    if rule_vars[var] == '':
-                        rule_vars.pop(var)
+                elif rule_vars[var] == '':
+                    rule_vars.pop(var)
 
         # after merging all product specific vars, consolidate a few data
         for rule_id in self.csv_data:
@@ -839,9 +810,7 @@ def walk_benchmarks(benchmark_dir, product, override_template=False):
                 rule_contents.extend([""])
 
             # Add template key
-            template_dict = {}
-            template_dict["template"] = csv_data[rule_id]
-
+            template_dict = {"template": csv_data[rule_id]}
             template_contents = ssg.utils.split_string_content(
                     ssg.yaml.ordered_dump(template_dict, indent=4, default_flow_style=False)
                     )
@@ -882,7 +851,7 @@ def main():
     product_name = "shared"
     shared_product = ProductCSVData(product_name, args.ssg_root)
     if args.dump:
-        with open(os.path.join(args.dump, f"shared.dump"), "w") as dump_f:
+        with open(os.path.join(args.dump, "shared.dump"), "w") as dump_f:
             pprint.pprint(shared_product.csv_data, dump_f)
 
     # Resolve loaded CSV Data
@@ -892,7 +861,7 @@ def main():
 
     shared_product.resolve_csv_data()
     if args.dump:
-        with open(os.path.join(args.dump, f"shared_resolved.dump"), "w") as dump_f:
+        with open(os.path.join(args.dump, "shared_resolved.dump"), "w") as dump_f:
             pprint.pprint(shared_product.csv_data, dump_f)
 
     # Walk through benchmark and add data into rule.yml

@@ -49,10 +49,10 @@ def main():
     base_dir = os.path.dirname(args.product_yaml)
     benchmark_root = ssg.utils.required_key(env_yaml, "benchmark_root")
     profiles_root = ""
-    if args.profiles_root:
-        profiles_root = args.profiles_root
-    else:
-        profiles_root = ssg.utils.required_key(env_yaml, "profiles_root")
+    profiles_root = args.profiles_root or ssg.utils.required_key(
+        env_yaml, "profiles_root"
+    )
+
     additional_content_directories = env_yaml.get("additional_content_directories", [])
 
     # we have to "absolutize" the paths the right way, relative to the

@@ -28,11 +28,11 @@ def check_all_rules(root):
             rule_id = rule.get("id")
             if rule_id not in selected_rules:
                 continue
-            match = False
-            for ident in rule.findall("{%s}ident" % (XCCDF12_NS)):
-                if ident.get("system") == cce_uri:
-                    match = True
-                    break
+            match = any(
+                ident.get("system") == cce_uri
+                for ident in rule.findall("{%s}ident" % (XCCDF12_NS))
+            )
+
             if not match:
                 rules_missing_cce.append(rule_id)
     return rules_missing_cce
@@ -49,9 +49,9 @@ if __name__ == "__main__":
     rules_missing_cce = check_all_rules(root)
     ds = os.path.basename(args.datastream_path)
     if len(rules_missing_cce) > 0:
-        print("The following rules in %s are missing CCEs:" % (ds))
+        print(f"The following rules in {ds} are missing CCEs:")
         for rule in rules_missing_cce:
             print(rule)
         sys.exit(1)
     else:
-        print("%s is OK" % (ds))
+        print(f"{ds} is OK")

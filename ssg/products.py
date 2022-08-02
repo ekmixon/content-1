@@ -34,9 +34,11 @@ def _get_implied_properties(existing_properties):
         pkg_manager = existing_properties["pkg_manager"]
         if "pkg_system" not in existing_properties:
             result["pkg_system"] = PKG_MANAGER_TO_SYSTEM[pkg_manager]
-        if "pkg_manager_config_file" not in existing_properties:
-            if pkg_manager in PKG_MANAGER_TO_CONFIG_FILE:
-                result["pkg_manager_config_file"] = PKG_MANAGER_TO_CONFIG_FILE[pkg_manager]
+        if (
+            "pkg_manager_config_file" not in existing_properties
+            and pkg_manager in PKG_MANAGER_TO_CONFIG_FILE
+        ):
+            result["pkg_manager_config_file"] = PKG_MANAGER_TO_CONFIG_FILE[pkg_manager]
 
     if "uid_min" not in existing_properties:
         result["uid_min"] = DEFAULT_UID_MIN

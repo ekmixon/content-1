@@ -63,30 +63,22 @@ def parse_args():
 def main():
     args = parse_args()
     product_yaml = os.path.join(args.ssg_root, "products", args.product, "product.yml")
-    if args.input_dir:
-        input_dir = args.input_dir
-    else:
-        input_dir = os.path.join(
-            args.ssg_root, "build", args.product, "fixes", "ansible"
-        )
-    if args.output_dir:
-        output_dir = args.output_dir
-    else:
-        output_dir = os.path.join(
-            args.ssg_root, "build", args.product, "playbooks"
-        )
-    if args.resolved_rules_dir:
-        resolved_rules_dir = args.resolved_rules_dir
-    else:
-        resolved_rules_dir = os.path.join(
-            args.ssg_root, "build", args.product, "rules"
-        )
-    if args.resolved_profiles_dir:
-        resolved_profiles_dir = args.resolved_profiles_dir
-    else:
-        resolved_profiles_dir = os.path.join(
-            args.ssg_root, "build", args.product, "profiles"
-        )
+    input_dir = args.input_dir or os.path.join(
+        args.ssg_root, "build", args.product, "fixes", "ansible"
+    )
+
+    output_dir = args.output_dir or os.path.join(
+        args.ssg_root, "build", args.product, "playbooks"
+    )
+
+    resolved_rules_dir = args.resolved_rules_dir or os.path.join(
+        args.ssg_root, "build", args.product, "rules"
+    )
+
+    resolved_profiles_dir = args.resolved_profiles_dir or os.path.join(
+        args.ssg_root, "build", args.product, "profiles"
+    )
+
     playbook_builder = ssg.playbook_builder.PlaybookBuilder(
         product_yaml, input_dir, output_dir, resolved_rules_dir, resolved_profiles_dir
     )

@@ -15,11 +15,11 @@ class Difference(object):
         self.what_not_failed = what_not_failed
 
     def __str__(self):
-        ret = ("failed {failed_stage}\n\t\tfailed on {failed_config}\n\t\tpassed on {good_config}"
-               .format(
-                   failed_stage=self.why_failed, failed_config=self.what_failed,
-                   good_config=self.what_not_failed))
-        return ret
+        return "failed {failed_stage}\n\t\tfailed on {failed_config}\n\t\tpassed on {good_config}".format(
+            failed_stage=self.why_failed,
+            failed_config=self.what_failed,
+            good_config=self.what_not_failed,
+        )
 
 
 def aggregate_results_by_scenarios(rule_results):
@@ -78,8 +78,7 @@ def print_result_differences(json_results):
                 rules_that_ended_by_success += 1
             # At most one scenario => no difference analysis is applicable.
             continue
-        difference = analyze_differences(results)
-        if difference:
+        if difference := analyze_differences(results):
             rule_stem = re.sub("xccdf_org.ssgproject.content_rule_(.+)", r"\1", scenario.rule_id)
             assert len(rule_stem) < len(scenario.rule_id), (
                 "The rule ID '{rule_id}' has a strange form, as it doesn't have "

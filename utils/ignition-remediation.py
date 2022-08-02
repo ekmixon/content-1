@@ -96,9 +96,9 @@ def urlencoded_file(filename):
 def encode(infile, target_path, mode, platforms):
     content = urlencoded_file(infile)
     tmpl = Template(mc_template)
-    mc = tmpl.substitute(path=target_path, mode=mode,
-                         platforms=platforms, content=content)
-    return mc
+    return tmpl.substitute(
+        path=target_path, mode=mode, platforms=platforms, content=content
+    )
 
 
 def encode_outfile(encode_outfile, rule_dir):
@@ -190,7 +190,7 @@ def rule_platforms(rule_path):
     platforms = ""
 
     with open(os.path.join(rule_path, "bash", "shared.sh")) as bash_rem:
-        for brl in bash_rem.readlines():
+        for brl in bash_rem:
             if brl.startswith("# platform = "):
                 platforms += brl.split(" = ")[1].strip()
                 if "multi_platform_ocp" not in platforms:
@@ -202,10 +202,7 @@ def rule_platforms(rule_path):
 
 
 def resolve_platforms(rule_path, args_platforms):
-    if args_platforms is not None:
-        return args_platforms
-
-    return rule_platforms(rule_path)
+    return rule_platforms(rule_path) if args_platforms is None else args_platforms
 
 
 def decode(filename):
@@ -213,7 +210,7 @@ def decode(filename):
         raise IOError("No filename given to decode")
 
     with open(filename) as f:
-        for line in f.readlines():
+        for line in f:
             # FIXME: what about multiple files?
             if 'source: data:,' in line:
                 return decode_data(line)

@@ -15,8 +15,8 @@ def _create_profile_cache(ssg_root):
                     'rhel7', 'sle12', 'sle15', 'ubuntu1604', 'ubuntu1804', 'ubuntu2004',
                     'wrlinux']
 
+    found_obj_name = False
     for product in product_list:
-        found_obj_name = False
         prod_profiles_dir = os.path.join(ssg_root, "products", product, "profiles")
         for _, dirs, files in os.walk(prod_profiles_dir):
             dirs.sort()
@@ -48,12 +48,11 @@ def read_file(path):
 
 
 def write_file(path, contents):
-    _f = open(path, 'w')
-    for line in contents:
-        _f.write(line + "\n")
+    with open(path, 'w') as _f:
+        for line in contents:
+            _f.write(line + "\n")
 
-    _f.flush()
-    _f.close()
+        _f.flush()
 
 
 def find_section_lines(file_contents, sec):
@@ -74,36 +73,39 @@ def find_section_lines(file_contents, sec):
     # identified and returned.
     sec_ranges = []
 
-    sec_id = sec + ":"
+    sec_id = f"{sec}:"
     sec_len = len(sec_id)
     end_num = len(file_contents)
     line_num = 0
 
     while line_num < end_num:
-        if len(file_contents[line_num]) >= sec_len:
-            if file_contents[line_num][0:sec_len] == sec_id:
-                begin = line_num
+        if (
+            len(file_contents[line_num]) >= sec_len
+            and file_contents[line_num][:sec_len] == sec_id
+        ):
+            begin = line_num
+            line_num += 1
+            while line_num < end_num and not (
+                len(file_contents[line_num]) > 0
+                and file_contents[line_num][0] != ' '
+            ):
                 line_num += 1
-                while line_num < end_num:
-                    if len(file_contents[line_num]) > 0 and file_contents[line_num][0] != ' ':
-                        break
-                    line_num += 1
 
-                end = line_num - 1
-                sec_ranges.append((begin, end))
+            end = line_num - 1
+            sec_ranges.append((begin, end))
         line_num += 1
     return sec_ranges
 
 
 def update_key_value(contents, key, old_value, new_value):
     new_contents = contents[:]
-    old_line = key + ": " + old_value
+    old_line = f"{key}: {old_value}"
     updated = False
 
-    for line_num in range(0, len(new_contents)):
+    for line_num in range(len(new_contents)):
         line = new_contents[line_num]
         if line == old_line:
-            new_contents[line_num] = key + ": " + new_value
+            new_contents[line_num] = f"{key}: {new_value}"
             updated = True
             break
 
@@ -115,14 +117,14 @@ def update_key_value(contents, key, old_value, new_value):
 
 def update_subkey_value(contents, key, subkey, old_value, new_value):
     new_contents = contents[:]
-    old_line = "    " + subkey + ": " + old_value
+    old_line = f"    {subkey}: {old_value}"
     key_range = find_section_lines(contents, key)[0]
     updated = False
 
     for line_num in range(key_range[0], key_range[1] + 1):
         line = new_contents[line_num]
         if line == old_line:
-            new_contents[line_num] = "    " + subkey + ": "
+            new_contents[line_num] = f"    {subkey}: "
             updated = True
 
     if not updated:
@@ -137,13 +139,13 @@ def update_subkey_value(contents, key, subkey, old_value, new_value):
 
 
 def add_key_subkey(contents, key, subkey, value):
-    new_line = "    " + subkey + ": " + value
+    new_line = f"    {subkey}: {value}"
     key_range = find_section_lines(contents, key)[0]
 
     # Since there is always at least one line in the key_range (when [0] == [1]),
     # it is always safe to add the new value right after the key header.
     start_line = key_range[0] + 1
-    new_contents = contents[0:start_line]
+    new_contents = contents[:start_line]
     new_contents.append(new_line)
     new_contents.extend(contents[start_line:])
     return new_contents
@@ -157,15 +159,14 @@ def get_key(line):
                                       line[char_index] == '_'):
             char_index += 1
         if line[char_index] == ':':
-            return line[0:char_index]
+            return line[:char_index]
     return None
 
 
 def get_sections(file_contents):
     global_sections = set()
     for line in file_contents:
-        key = get_key(line)
-        if key:
+        if key := get_key(line):
             global_sections.add(key)
     return global_sections
 
@@ -177,7 +178,7 @@ def range_has_jinja(file_contents, range):
 def find_profiles(ssg_root, path, obj_name):
     global profile_cache
 
-    if not obj_name in profile_cache:
+    if obj_name not in profile_cache:
         return
 
     used_products = profile_cache[obj_name]
@@ -214,7 +215,7 @@ def parse_from_yaml(file_contents, lines):
 
 
 def print_file(file_contents):
-    for line_num in range(0, len(file_contents)):
+    for line_num in range(len(file_contents)):
         print("%d: %s" % (line_num, file_contents[line_num]))
 
 

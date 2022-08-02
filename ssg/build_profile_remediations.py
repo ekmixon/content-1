@@ -20,9 +20,7 @@ def generate_for_input_content(input_content, benchmark_id, profile_id,
     in given input_content!
     """
 
-    args = [OSCAP_PATH, "xccdf", "generate", "fix"]
-    # avoid validating the input over and over again for every profile
-    args.append("--skip-valid")
+    args = [OSCAP_PATH, "xccdf", "generate", "fix", "--skip-valid"]
     if benchmark_id != "":
         args.extend(["--benchmark-id", benchmark_id])
     if profile_id != "":
@@ -40,24 +38,17 @@ def _get_filename(path_base, extension, profile_id, benchmark_id, benchmarks,
     Returns the filename for a given remediation from the profile_id and
     benchmark_id.
     """
-    profile_id_for_path = "default" if not profile_id else profile_id
+    profile_id_for_path = profile_id or "default"
     benchmark_id_for_path = benchmark_id
     if benchmark_id_for_path.startswith(OSCAP_DS_STRING):
         benchmark_id_for_path = benchmark_id_for_path[len(OSCAP_DS_STRING):]
-    if template == ansible_system:
-        file_name_base = "playbook"
-    else:
-        file_name_base = "script"
-
+    file_name_base = "playbook" if template == ansible_system else "script"
     if len(benchmarks) == 1 or len(benchmark_id_for_path) == len("RHEL-X"):
         # treat the base RHEL benchmark as a special case to preserve
         # old guide paths and old URLs that people may be relying on
-        return "%s-%s-%s.%s" % (path_base, file_name_base,
-                                get_profile_short_id(profile_id_for_path),
-                                extension)
-    return "%s-%s-%s-%s.%s" % \
-           (path_base, benchmark_id_for_path, file_name_base,
-            get_profile_short_id(profile_id_for_path), extension)
+        return f"{path_base}-{file_name_base}-{get_profile_short_id(profile_id_for_path)}.{extension}"
+
+    return f"{path_base}-{benchmark_id_for_path}-{file_name_base}-{get_profile_short_id(profile_id_for_path)}.{extension}"
 
 
 def get_output_paths(benchmarks, benchmark_profile_pairs, path_base, extension,

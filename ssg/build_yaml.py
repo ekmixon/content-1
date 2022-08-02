@@ -110,7 +110,7 @@ class Profile(object):
         self.extends = None
         self.selected = []
         self.unselected = []
-        self.variables = dict()
+        self.variables = {}
         self.refine_rules = defaultdict(list)
         self.metadata = None
         self.reference = None
@@ -128,8 +128,7 @@ class Profile(object):
         self.description = required_key(yaml_contents, "description")
         del yaml_contents["description"]
         self.extends = yaml_contents.pop("extends", None)
-        selection_entries = required_key(yaml_contents, "selections")
-        if selection_entries:
+        if selection_entries := required_key(yaml_contents, "selections"):
             self._parse_selections(selection_entries)
         del yaml_contents["selections"]
         self.platforms = yaml_contents.pop("platforms", set())
@@ -171,11 +170,13 @@ class Profile(object):
         return profile
 
     def dump_yaml(self, file_name, documentation_complete=True):
-        to_dump = {}
-        to_dump["documentation_complete"] = documentation_complete
-        to_dump["title"] = self.title
-        to_dump["description"] = self.description
-        to_dump["reference"] = self.reference
+        to_dump = {
+            "documentation_complete": documentation_complete,
+            "title": self.title,
+            "description": self.description,
+            "reference": self.reference,
+        }
+
         if self.metadata is not None:
             to_dump["metadata"] = self.metadata
 
@@ -185,17 +186,21 @@ class Profile(object):
         if self.platforms:
             to_dump["platforms"] = self.platforms
 
-        selections = []
-        for item in self.selected:
-            selections.append(item)
-        for item in self.unselected:
-            selections.append("!"+item)
-        for varname in self.variables.keys():
-            selections.append(varname+"="+self.variables.get(varname))
+        selections = list(self.selected)
+        selections.extend(f"!{item}" for item in self.unselected)
+        selections.extend(
+            f"{varname}={self.variables.get(varname)}"
+            for varname in self.variables.keys()
+        )
+
         for rule, refinements in self.refine_rules.items():
-            for prop, val in refinements:
-                selections.append("{rule}.{property}={value}"
-                                  .format(rule=rule, property=prop, value=val))
+            selections.extend(
+                "{rule}.{property}={value}".format(
+                    rule=rule, property=prop, value=val
+                )
+                for prop, val in refinements
+            )
+
         to_dump["selections"] = selections
         with open(file_name, "w+") as f:
             yaml.dump(to_dump, f, indent=4)
@@ -303,13 +308,10 @@ class Profile(object):
                 raise ValueError(msg)
 
     def validate_variables(self, variables):
-        variables_by_id = dict()
-        for var in variables:
-            variables_by_id[var.id_] = var
-
+        variables_by_id = {var.id_: var for var in variables}
         for var_id, our_val in self.variables.items():
             if var_id not in variables_by_id:
-                all_vars_list = [" - %s" % v for v in variables_by_id.keys()]
+                all_vars_list = [f" - {v}" for v in variables_by_id]
                 msg = (
                     "Value '{var_id}' in profile '{profile_name}' is not known. "
                     "We know only variables:\n{var_names}"
@@ -363,11 +365,14 @@ class Profile(object):
         profile.extends = self.extends
         profile.platforms = self.platforms
         profile.platform = self.platform
-        profile.selected = list(set(self.selected) - set(other.selected))
-        profile.selected.sort()
+        profile.selected = sorted(set(self.selected) - set(other.selected))
         profile.unselected = list(set(self.unselected) - set(other.unselected))
-        profile.variables = dict ((k, v) for (k, v) in self.variables.items()
-                             if k not in other.variables or v != other.variables[k])
+        profile.variables = {
+            k: v
+            for (k, v) in self.variables.items()
+            if k not in other.variables or v != other.variables[k]
+        }
+
         return profile
 
 
@@ -378,8 +383,9 @@ class ResolvableProfile(Profile):
         self.resolved_selections = set()
 
     def _controls_ids_to_controls(self, controls_manager, policy_id, control_id_list):
-        items = [controls_manager.get_control(policy_id, cid) for cid in control_id_list]
-        return items
+        return [
+            controls_manager.get_control(policy_id, cid) for cid in control_id_list
+        ]
 
     def _merge_control(self, control):
         self.selected.extend(control.rules)
@@ -395,7 +401,7 @@ class ResolvableProfile(Profile):
         self.resolved_selections.update(extended_selects)
 
         updated_variables = dict(extended_profile.variables)
-        updated_variables.update(self.variables)
+        updated_variables |= self.variables
         self.variables = updated_variables
 
         extended_refinements = deepcopy(extended_profile.refine_rules)
@@ -453,8 +459,7 @@ class ProfileWithSeparatePolicies(ResolvableProfile):
         self.policies = {}
 
     def read_yaml_contents(self, yaml_contents):
-        policies = yaml_contents.pop("policies", None)
-        if policies:
+        if policies := yaml_contents.pop("policies", None):
             self._parse_policies(policies)
         super(ProfileWithSeparatePolicies, self).read_yaml_contents(yaml_contents)
 
@@ -462,12 +467,11 @@ class ProfileWithSeparatePolicies(ResolvableProfile):
         for item in policies_yaml:
             id_ = required_key(item, "id")
             controls_ids = required_key(item, "controls")
-            if not isinstance(controls_ids, list):
-                if controls_ids != "all":
-                    msg = (
-                        "Policy {id_} contains invalid controls list {controls}."
-                        .format(id_=id_, controls=str(controls_ids)))
-                    raise ValueError(msg)
+            if not isinstance(controls_ids, list) and controls_ids != "all":
+                msg = (
+                    "Policy {id_} contains invalid controls list {controls}."
+                    .format(id_=id_, controls=str(controls_ids)))
+                raise ValueError(msg)
             self.policies[id_] = controls_ids
 
     def _process_controls_ids_into_controls(self, controls_manager, policy_id, controls_ids):
@@ -586,7 +590,7 @@ class Value(object):
             )
 
         value.interactive = \
-            yaml_contents.pop("interactive", "false").lower() == "true"
+                yaml_contents.pop("interactive", "false").lower() == "true"
 
         value.options = required_key(yaml_contents, "options")
         del yaml_contents["options"]
@@ -1092,8 +1096,8 @@ class Rule(object):
 
         local_env_yaml = None
         if env_yaml:
-            local_env_yaml = dict()
-            local_env_yaml.update(env_yaml)
+            local_env_yaml = {}
+            local_env_yaml |= env_yaml
             local_env_yaml["rule_id"] = rule_id
 
         yaml_contents = open_and_macro_expand(yaml_file, local_env_yaml)
@@ -1162,9 +1166,10 @@ class Rule(object):
         cci_ex = re.compile(r'^CCI-[0-9]{6}$')
         for cci in cci_id.split(","):
             if not cci_ex.match(cci):
-                raise ValueError("CCI '{}' is in the wrong format! "
-                                 "Format should be similar to: "
-                                 "CCI-XXXXXX".format(cci))
+                raise ValueError(
+                    f"CCI '{cci}' is in the wrong format! Format should be similar to: CCI-XXXXXX"
+                )
+
         self.references["disa"] = cci_id
 
     def normalize(self, product):
@@ -1179,7 +1184,7 @@ class Rule(object):
             raise RuntimeError(msg)
 
     def _get_product_only_references(self):
-        product_references = dict()
+        product_references = {}
 
         for ref in Rule.PRODUCT_REFERENCES:
             start = "{0}@".format(ref)
@@ -1194,12 +1199,12 @@ class Rule(object):
         if not self.template:
             return
 
-        not_specific_vars = self.template.get("vars", dict())
+        not_specific_vars = self.template.get("vars", {})
         specific_vars = self._make_items_product_specific(
             not_specific_vars, product_suffix, True)
         self.template["vars"] = specific_vars
 
-        not_specific_backends = self.template.get("backends", dict())
+        not_specific_backends = self.template.get("backends", {})
         specific_backends = self._make_items_product_specific(
             not_specific_backends, product_suffix, True)
         self.template["backends"] = specific_backends
@@ -1213,8 +1218,11 @@ class Rule(object):
             general_references.pop(todel)
         for ref in Rule.PRODUCT_REFERENCES:
             if ref in general_references:
-                msg = "Unexpected reference identifier ({0}) without "
-                msg += "product qualifier ({0}@{1}) while building rule "
+                msg = (
+                    "Unexpected reference identifier ({0}) without "
+                    + "product qualifier ({0}@{1}) while building rule "
+                )
+
                 msg += "{2}"
                 msg = msg.format(ref, product, self.id_)
                 raise ValueError(msg)
@@ -1244,7 +1252,7 @@ class Rule(object):
         self._verify_stigid_format(product)
 
     def _make_items_product_specific(self, items_dict, product_suffix, allow_overwrites=False):
-        new_items = dict()
+        new_items = {}
         for full_label, value in items_dict.items():
             if "@" not in full_label and full_label not in new_items:
                 new_items[full_label] = value
@@ -1296,43 +1304,47 @@ class Rule(object):
         Returns a dictionary that is the same schema as the dict obtained when loading rule YAML.
         """
 
-        yaml_contents = dict()
-        for key in Rule.YAML_KEYS_DEFAULTS:
-            yaml_contents[key] = getattr(self, key)
-
-        return yaml_contents
+        return {key: getattr(self, key) for key in Rule.YAML_KEYS_DEFAULTS}
 
     def validate_identifiers(self, yaml_file):
         if self.identifiers is None:
-            raise ValueError("Empty identifier section in file %s" % yaml_file)
+            raise ValueError(f"Empty identifier section in file {yaml_file}")
 
         # Validate all identifiers are non-empty:
         for ident_type, ident_val in self.identifiers.items():
             if not isinstance(ident_type, str) or not isinstance(ident_val, str):
-                raise ValueError("Identifiers and values must be strings: %s in file %s"
-                                 % (ident_type, yaml_file))
+                raise ValueError(
+                    f"Identifiers and values must be strings: {ident_type} in file {yaml_file}"
+                )
+
             if ident_val.strip() == "":
-                raise ValueError("Identifiers must not be empty: %s in file %s"
-                                 % (ident_type, yaml_file))
-            if ident_type[0:3] == 'cce':
+                raise ValueError(
+                    f"Identifiers must not be empty: {ident_type} in file {yaml_file}"
+                )
+
+            if ident_type[:3] == 'cce':
                 if not is_cce_format_valid(ident_val):
                     raise ValueError("CCE Identifier format must be valid: invalid format '%s' for CEE '%s'"
                                      " in file '%s'" % (ident_val, ident_type, yaml_file))
-                if not is_cce_value_valid("CCE-" + ident_val):
+                if not is_cce_value_valid(f"CCE-{ident_val}"):
                     raise ValueError("CCE Identifier value is not a valid checksum: invalid value '%s' for CEE '%s'"
                                      " in file '%s'" % (ident_val, ident_type, yaml_file))
 
     def validate_references(self, yaml_file):
         if self.references is None:
-            raise ValueError("Empty references section in file %s" % yaml_file)
+            raise ValueError(f"Empty references section in file {yaml_file}")
 
         for ref_type, ref_val in self.references.items():
             if not isinstance(ref_type, str) or not isinstance(ref_val, str):
-                raise ValueError("References and values must be strings: %s in file %s"
-                                 % (ref_type, yaml_file))
+                raise ValueError(
+                    f"References and values must be strings: {ref_type} in file {yaml_file}"
+                )
+
             if ref_val.strip() == "":
-                raise ValueError("References must not be empty: %s in file %s"
-                                 % (ref_type, yaml_file))
+                raise ValueError(
+                    f"References must not be empty: {ref_type} in file {yaml_file}"
+                )
+
 
         for ref_type, ref_val in self.references.items():
             for ref in ref_val.split(","):
@@ -1409,9 +1421,9 @@ class Rule(object):
             oval_ref.set("id", self.id_)
 
         if self.ocil or self.ocil_clause:
-            ocil = add_sub_element(rule, 'ocil', self.ocil if self.ocil else "")
-            if self.ocil_clause:
-                ocil.set("clause", self.ocil_clause)
+            ocil = add_sub_element(rule, 'ocil', self.ocil or "")
+        if self.ocil_clause:
+            ocil.set("clause", self.ocil_clause)
 
         add_warning_elements(rule, self.warnings)
         add_nondata_subelements(rule, "requires", "id", self.requires)

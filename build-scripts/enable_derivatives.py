@@ -93,7 +93,7 @@ def main():
     ssg.build_derivatives.remove_idents(root, XCCDF12_NS)
     ssg.build_derivatives.remove_cce_reference(root, oval_ns)
 
-    if len(benchmarks) == 0:
+    if not benchmarks:
         raise RuntimeError("No Benchmark found!")
 
     for namespace, benchmark in benchmarks:

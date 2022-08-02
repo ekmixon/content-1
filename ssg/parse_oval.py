@@ -12,13 +12,7 @@ REFERENCE_TO_GROUP = dict(
 )
 
 
-CONTAINER_GROUPS = set((
-    "definitions",
-    "objects",
-    "states",
-    "tests",
-    "variables",
-))
+CONTAINER_GROUPS = {"definitions", "objects", "states", "tests", "variables"}
 
 
 class ElementFinder(object):
@@ -62,17 +56,13 @@ class ElementFinder(object):
 
 
 def _sort_by_id(elements):
-    ret = dict()
-    for element in elements:
-        ret[element.attrib["id"]] = element
-    return ret
+    return {element.attrib["id"]: element for element in elements}
 
 
 def _search_dict_for_items_that_end_with(dic, what_to_look_for):
-    for item in dic:
-        if item.endswith(what_to_look_for):
-            return dic[item]
-    return None
+    return next(
+        (dic[item] for item in dic if item.endswith(what_to_look_for)), None
+    )
 
 
 def _search_element_for_reference_attributes(element):
@@ -117,30 +107,32 @@ def _get_container_oval_groups_from_tree(element_tree):
 
 
 def _get_resolved_definitions(oval_groups):
-    def_id_to_vars_ids = {}
-    for def_id, def_el in oval_groups["definitions"].items():
-        def_id_to_vars_ids[def_id] = resolve_definition(oval_groups, def_el)
-    return def_id_to_vars_ids
+    return {
+        def_id: resolve_definition(oval_groups, def_el)
+        for def_id, def_el in oval_groups["definitions"].items()
+    }
 
 
 def _check_sanity(oval_groups, resolved_defns):
-    all_external_variables = set()
-    for var_id, var_el in oval_groups["variables"].items():
-        if var_el.tag.endswith("external_variable"):
-            all_external_variables.add(var_id)
+    all_external_variables = {
+        var_id
+        for var_id, var_el in oval_groups["variables"].items()
+        if var_el.tag.endswith("external_variable")
+    }
 
     all_caught_variables = set()
     for var in resolved_defns.values():
         all_caught_variables.update(var)
 
-    skipped_variables = all_external_variables.difference(all_caught_variables)
-    if skipped_variables:
+    if skipped_variables := all_external_variables.difference(
+        all_caught_variables
+    ):
         print("These variables managed to slip past:", skipped_variables)
         strange_variables = all_caught_variables.difference(
             all_external_variables)
-        assert not strange_variables, \
-            ("There were unexpected caught variables: {}"
-             .format(str(strange_variables)))
+        assert (
+            not strange_variables
+        ), f"There were unexpected caught variables: {strange_variables}"
 
 
 def _check_sanity_on_file(fname):

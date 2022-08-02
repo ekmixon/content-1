@@ -114,10 +114,10 @@ def main():
     home_dir = os.path.expanduser('~' + username)
 
     if not data.url:
-        if data.distro == "fedora":
-            data.url = "https://download.fedoraproject.org/pub/fedora/linux/releases/34/Everything/x86_64/os"
-        elif data.distro == "centos7":
+        if data.distro == "centos7":
             data.url = "http://mirror.centos.org/centos/7/os/x86_64"
+        elif data.distro == "fedora":
+            data.url = "https://download.fedoraproject.org/pub/fedora/linux/releases/34/Everything/x86_64/os"
     if not data.url:
         sys.stderr.write("For the '{}' distro the `--url` option needs to be provided.\n".format(data.distro))
         return 1
@@ -187,8 +187,8 @@ def main():
     # https://www.freedesktop.org/wiki/Software/systemd/PredictableNetworkInterfaceNames/
     command = 'virt-install --connect={libvirt} --name={domain} --memory={ram} --vcpus={cpu} --network {network} --disk {disk_spec} --initrd-inject={kickstart} --extra-args="inst.ks=file:/{ks_basename} {inst_opt} ksdevice=eth0 net.ifnames=0 console=ttyS0,115200" --serial pty --graphics={graphics_opt} --noautoconsole --rng /dev/random --wait=-1 --location={url}'.format(**data.__dict__)
     if data.uefi == "normal":
-        command = command+" --boot uefi"
-    if data.uefi == "secureboot":
+        command += " --boot uefi"
+    elif data.uefi == "secureboot":
         command = command + " --boot uefi,loader_secure=yes,\
 loader=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd,\
 nvram_template=/usr/share/edk2/ovmf/OVMF_VARS.secboot.fd --features smm=on"
@@ -207,7 +207,12 @@ nvram_template=/usr/share/edk2/ovmf/OVMF_VARS.secboot.fd --features smm=on"
         # parenthesis for example: (echo foo). In other shells you
         # need to prepend the $ symbol as: $(echo foo)
         from os import environ
-        print("  arp -n | grep {0}(virsh -q domiflist {1} | awk '{{print $5}}')\n".format('' if 'fish' == environ['SHELL'][-4:] else '$', data.domain))
+        print(
+            "  arp -n | grep {0}(virsh -q domiflist {1} | awk '{{print $5}}')\n".format(
+                '' if environ['SHELL'][-4:] == 'fish' else '$', data.domain
+            )
+        )
+
 
     print("To connect to the {0} VM use:\n  ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@IP\n".format(data.domain))
     print("To connect to the VM serial console, use:\n  virsh console {0}\n".format(data.domain))

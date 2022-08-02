@@ -45,14 +45,19 @@ def add_cpes(elem, namespace, mapping):
 
 
 def add_cpe_item_to_dictionary(tree_root, product_yaml_path, cpe_ref, id_name):
-    cpe_list = tree_root.find(".//{%s}cpe-list" % (PREFIX_TO_NS["cpe-dict"]))
-    if cpe_list:
+    if cpe_list := tree_root.find(
+        ".//{%s}cpe-list" % (PREFIX_TO_NS["cpe-dict"])
+    ):
         product_yaml = load_product_yaml(product_yaml_path)
         product_cpes = ProductCPEs(product_yaml)
         cpe_item = product_cpes.get_cpe(cpe_ref)
         translator = IDTranslator(id_name)
         cpe_item.check_id = translator.generate_id("{" + oval_namespace + "}definition", cpe_item.check_id)
-        cpe_list.append(cpe_item.to_xml_element("ssg-%s-cpe-oval.xml" % product_yaml.get("product")))
+        cpe_list.append(
+            cpe_item.to_xml_element(
+                f'ssg-{product_yaml.get("product")}-cpe-oval.xml'
+            )
+        )
 
 
 def add_notice(benchmark, namespace, notice, warning):
@@ -62,8 +67,9 @@ def add_notice(benchmark, namespace, notice, warning):
 
     index = -1
     prev_element = None
-    existing_notices = list(benchmark.findall("./{%s}notice" % (namespace)))
-    if existing_notices:
+    if existing_notices := list(
+        benchmark.findall("./{%s}notice" % (namespace))
+    ):
         prev_element = existing_notices[0]
         # insert before the first notice
         index = list(benchmark).index(prev_element)
@@ -96,19 +102,21 @@ def remove_idents(tree_root, namespace, prod="RHEL"):
     Remove product identifiers from rules in XML tree
     """
 
-    ident_exp = '.*' + prod + '-*'
-    ref_exp = prod + '-*'
+    ident_exp = f'.*{prod}-*'
+    ref_exp = f'{prod}-*'
     for rule in tree_root.findall(".//{%s}Rule" % (namespace)):
         for ident in rule.findall(".//{%s}ident" % (namespace)):
-            if ident is not None:
-                if (re.search(r'CCE-*', ident.text) or
-                        re.search(ident_exp, ident.text)):
-                    rule.remove(ident)
+            if ident is not None and (
+                (
+                    re.search(r'CCE-*', ident.text)
+                    or re.search(ident_exp, ident.text)
+                )
+            ):
+                rule.remove(ident)
 
         for ref in rule.findall(".//{%s}reference" % (namespace)):
-            if ref.text is not None:
-                if re.search(ref_exp, ref.text):
-                    rule.remove(ref)
+            if ref.text is not None and re.search(ref_exp, ref.text):
+                rule.remove(ref)
 
         for fix in rule.findall(".//{%s}fix" % (namespace)):
             if "fips" in fix.get("id"):
@@ -134,9 +142,10 @@ def remove_cce_reference(tree_root, namespace):
 
 
 def profile_handling(tree_root, namespace):
-    ns_profiles = []
-    for i in standard_profiles:
-        ns_profiles.append("xccdf_%s.content_profile_%s" % (OSCAP_VENDOR, i))
+    ns_profiles = [
+        f"xccdf_{OSCAP_VENDOR}.content_profile_{i}" for i in standard_profiles
+    ]
+
     all_profiles = standard_profiles + ns_profiles
     for profile in tree_root.findall(".//{%s}Profile" % (namespace)):
         if profile.get("id") not in all_profiles:

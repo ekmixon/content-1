@@ -19,7 +19,7 @@ resolved_profiles_dir = os.path.join(DATADIR, "profiles")
 rule = "selinux_state"
 profile = "ospp"
 
-real_output_filepath = os.path.join(output_dir, profile, rule + ".yml")
+real_output_filepath = os.path.join(output_dir, profile, f"{rule}.yml")
 expected_output_filepath = os.path.join(DATADIR, "selinux_state.yml")
 
 

@@ -51,23 +51,21 @@ class Control():
             if "=" in item:
                 varname, value = item.split("=", 1)
                 control.variables[varname] = value
+            elif product is None:
+                # The product was not specified, simply add the rule
+                control.rules.append(item)
             else:
-                # Check if rule is applicable to product, i.e.: prodtype has product id
-                if product is None:
-                    # The product was not specified, simply add the rule
+                rule_yaml = get_rule_path_by_id(content_dir, item)
+                if rule_yaml is None:
+                    # item not found in benchmark_root
+                    continue
+                rule = ssg.build_yaml.Rule.from_yaml(rule_yaml, env_yaml)
+                if rule.prodtype == "all" or product in rule.prodtype:
                     control.rules.append(item)
                 else:
-                    rule_yaml = get_rule_path_by_id(content_dir, item)
-                    if rule_yaml is None:
-                        # item not found in benchmark_root
-                        continue
-                    rule = ssg.build_yaml.Rule.from_yaml(rule_yaml, env_yaml)
-                    if rule.prodtype == "all" or product in rule.prodtype:
-                        control.rules.append(item)
-                    else:
-                        logging.info("Rule {item} doesn't apply to {product}".format(
-                            item=item,
-                            product=product))
+                    logging.info("Rule {item} doesn't apply to {product}".format(
+                        item=item,
+                        product=product))
 
         control.related_rules = control_dict.get("related_rules", [])
         control.note = control_dict.get("note")
@@ -92,17 +90,14 @@ class Policy():
         self.env_yaml = env_yaml
         self.filepath = filepath
         self.controls = []
-        self.controls_by_id = dict()
+        self.controls_by_id = {}
         self.levels = []
-        self.levels_by_id = dict()
+        self.levels_by_id = {}
         self.title = ""
         self.source = ""
 
     def _parse_controls_tree(self, tree):
-        default_level = ["default"]
-        if self.levels:
-            default_level = [self.levels[0].id]
-
+        default_level = [self.levels[0].id] if self.levels else ["default"]
         for node in tree:
             control = Control.from_control_dict(
                 node, self.env_yaml, default_level=default_level)
@@ -133,28 +128,21 @@ class Policy():
 
     def get_control(self, control_id):
         try:
-            c = self.controls_by_id[control_id]
-            return c
+            return self.controls_by_id[control_id]
         except KeyError:
-            msg = "%s not found in policy %s" % (
-                control_id, self.id
-            )
+            msg = f"{control_id} not found in policy {self.id}"
             raise ValueError(msg)
 
     def get_level(self, level_id):
         try:
-            lv = self.levels_by_id[level_id]
-            return lv
+            return self.levels_by_id[level_id]
         except KeyError:
-            msg = "Level %s not found in policy %s" % (
-                level_id, self.id
-            )
+            msg = f"Level {level_id} not found in policy {self.id}"
             raise ValueError(msg)
 
     def get_level_with_ancestors(self, level_id):
-        levels = set()
         level = self.get_level(level_id)
-        levels.add(level)
+        levels = {level}
         if level.inherits_from:
             for lv in level.inherits_from:
                 levels.update(self.get_level_with_ancestors(lv))
@@ -172,7 +160,7 @@ class ControlsManager():
         if not os.path.exists(self.controls_dir):
             return
         for filename in sorted(glob(os.path.join(self.controls_dir, "*.yml"))):
-            logging.info("Found file %s" % (filename))
+            logging.info(f"Found file {filename}")
             filepath = os.path.join(self.controls_dir, filename)
             policy = Policy(filepath, self.env_yaml)
             policy.load()
@@ -184,8 +172,7 @@ class ControlsManager():
         except KeyError:
             msg = "policy '%s' doesn't exist" % (policy_id)
             raise ValueError(msg)
-        control = policy.get_control(control_id)
-        return control
+        return policy.get_control(control_id)
 
     def _get_policy(self, policy_id):
         try:
@@ -198,14 +185,10 @@ class ControlsManager():
     def get_all_controls_of_level(self, policy_id, level_id):
         policy = self._get_policy(policy_id)
         levels = policy.get_level_with_ancestors(level_id)
-        level_ids = set([lv.id for lv in levels])
+        level_ids = {lv.id for lv in levels}
 
         all_policy_controls = self.get_all_controls(policy_id)
-        eligible_controls = []
-        for c in all_policy_controls:
-            if len(level_ids.intersection(c.levels)) > 0:
-                eligible_controls.append(c)
-        return eligible_controls
+        return [c for c in all_policy_controls if level_ids.intersection(c.levels)]
 
     def get_all_controls(self, policy_id):
         policy = self._get_policy(policy_id)

@@ -21,9 +21,7 @@ def get_content_ref_if_exists_and_not_remote(check):
     checkcontentref = check.find("./{%s}check-content-ref" % XCCDF11_NS)
     if checkcontentref is None:
         return None
-    if is_content_href_remote(checkcontentref):
-        return None
-    return checkcontentref
+    return None if is_content_href_remote(checkcontentref) else checkcontentref
 
 
 def is_content_href_remote(check_content_ref):
@@ -99,7 +97,7 @@ def get_oval_path(rule_obj, oval_id):
         raise ValueError("Malformed rule_obj")
 
     if 'ovals' not in rule_obj or oval_id not in rule_obj['ovals']:
-        raise ValueError("Unknown oval_id:%s for rule_id" % oval_id)
+        raise ValueError(f"Unknown oval_id:{oval_id} for rule_id")
 
     return os.path.join(rule_obj['dir'], 'oval', oval_id)
 
@@ -125,10 +123,13 @@ def set_applicable_platforms(oval_contents, new_platforms):
     start_affected, end_affected, indent = parse_affected(oval_contents)
 
     platforms = sorted(new_platforms)
-    new_platforms_xml = map(lambda x: indent + "<platform>%s</platform>" % x, platforms)
+    new_platforms_xml = map(
+        lambda x: indent + f"<platform>{x}</platform>", platforms
+    )
+
     new_platforms_xml = list(new_platforms_xml)
 
-    new_contents = oval_contents[0:start_affected+1]
+    new_contents = oval_contents[:start_affected+1]
     new_contents.extend(new_platforms_xml)
     new_contents.extend(oval_contents[end_affected:])
 

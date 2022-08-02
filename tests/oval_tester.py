@@ -82,9 +82,8 @@ class OVALTester(object):
         pattern = re.compile(
             r"^Definition oval:[A-Za-z0-9_\-\.]+:def:[1-9][0-9]*: (\w+)$")
         for line in oscap_output.splitlines():
-            matched = pattern.match(line)
-            if matched:
-                return matched.group(1)
+            if matched := pattern.match(line):
+                return matched[1]
         return None
 
     def _create_config_file(self, config_file_content, tmp_dir):
@@ -104,7 +103,7 @@ class OVALTester(object):
         return oval_path
 
     def _evaluate_oval(self, oval_path):
-        results_path = oval_path + ".results.xml"
+        results_path = f"{oval_path}.results.xml"
         oscap_command = [
             "oscap", "oval", "eval", "--results", results_path, oval_path]
         oscap_process = subprocess.Popen(
@@ -135,12 +134,12 @@ class OVALTester(object):
                    "is %s.") % (result, expected_result)
             assert result == expected_result, msg
             if self.verbose:
-                print("Test: %s: PASS" % (description))
+                print(f"Test: {description}: PASS")
             self.result = self.result and True
         except AssertionError as e:
             if self.verbose:
-                print("Test: %s: FAIL" % (description))
-                print("    " + str(e))
+                print(f"Test: {description}: FAIL")
+                print(f"    {str(e)}")
             self.result = False
         finally:
             shutil.rmtree(tmp_dir)

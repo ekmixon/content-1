@@ -48,10 +48,13 @@ def applies_to_product(file_name, product):
     contents of the fix or check, only by the name of the file.
     """
 
-    if not product:
-        return True
-
-    return file_name == "shared" or file_name == product or product.startswith(file_name)
+    return (
+        file_name == "shared"
+        or file_name == product
+        or product.startswith(file_name)
+        if product
+        else True
+    )
 
 
 def get_rule_dir_ovals(dir_path, product=None):
@@ -127,8 +130,7 @@ def find_rule_dirs_in_paths(base_dirs):
     """
     if base_dirs:
         for cur_dir in base_dirs:
-            for d in find_rule_dirs(cur_dir):
-                yield d
+            yield from find_rule_dirs(cur_dir)
 
 
 def get_rule_path_by_id(benchmark_dir, rule_id):

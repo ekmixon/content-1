@@ -21,11 +21,7 @@ from ssg_test_suite import common
 from ssg.shims import input_func
 
 # Needed for compatibility as there is no TimeoutError in python2.
-if sys.version_info[0] < 3:
-    TimeoutException = socket.timeout
-else:
-    TimeoutException = TimeoutError
-
+TimeoutException = socket.timeout if sys.version_info[0] < 3 else TimeoutError
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 _CONTEXT_RETURN_CODES = {'pass': 0,
@@ -102,10 +98,7 @@ def get_file_remote(test_env, verbose_path, local_dir, remote_path):
 
 def find_result_id_in_output(output):
     match = re.search('result id.*$', output, re.IGNORECASE | re.MULTILINE)
-    if match is None:
-        return None
-    # Return the right most word of the match which is the result id.
-    return match.group(0).split()[-1]
+    return None if match is None else match[0].split()[-1]
 
 
 def get_result_id_from_arf(arf_path, verbose_path):
@@ -126,7 +119,7 @@ def single_quote_string(input):
     result = input
     for char in "\"'":
         result = result.replace(char, "")
-    return "'{}'".format(result)
+    return f"'{result}'"
 
 
 def generate_fixes_remotely(test_env, formatting, verbose_path):
@@ -165,13 +158,11 @@ def run_stage_remediation_ansible(run_type, test_env, formatting, verbose_path):
     returncode, output = common.run_cmd_local(command, verbose_path)
     # Appends output of ansible-playbook to the verbose_path file.
     with open(verbose_path, 'ab') as f:
-        f.write('Stdout of "{}":'.format(command_string).encode("utf-8"))
+        f.write(f'Stdout of "{command_string}":'.encode("utf-8"))
         f.write(output.encode("utf-8"))
     if returncode != 0:
-        msg = (
-            'Ansible playbook remediation run has '
-            'exited with return code {} instead of expected 0'
-            .format(returncode))
+        msg = f'Ansible playbook remediation run has exited with return code {returncode} instead of expected 0'
+
         LogHelper.preload_log(logging.ERROR, msg, 'fail')
         return False
     return True
@@ -194,9 +185,8 @@ def run_stage_remediation_bash(run_type, test_env, formatting, verbose_path):
         try:
             test_env.execute_ssh_command(command_string, log_file)
         except Exception as exc:
-            msg = (
-                'Bash script remediation run has exited with return code {} '
-                'instead of expected 0'.format(exc.returncode))
+            msg = f'Bash script remediation run has exited with return code {exc.returncode} instead of expected 0'
+
             LogHelper.preload_log(logging.ERROR, msg, 'fail')
             return False
     return True
@@ -234,19 +224,15 @@ def is_virtual_oscap_profile(profile):
     if profile is not None:
         if profile == OSCAP_PROFILE_ALL_ID:
             return True
-        else:
-            if "(" == profile[:1] and ")" == profile[-1:]:
-                return True
+        if profile[:1] == "(" and profile[-1:] == ")":
+            return True
     return False
 
 
 def process_profile_id(profile):
     # Detect if the profile is virtual and include single quotes if needed.
     if is_virtual_oscap_profile(profile):
-        if PROFILE_ALL_ID_SINGLE_QUOTED:
-            return "'{}'".format(profile)
-        else:
-            return profile
+        return f"'{profile}'" if PROFILE_ALL_ID_SINGLE_QUOTED else profile
     else:
         return profile
 
@@ -348,7 +334,7 @@ class GenericRunner(object):
         elif stage == 'final':
             result = self.final()
         else:
-            raise RuntimeError('Unknown stage: {}.'.format(stage))
+            raise RuntimeError(f'Unknown stage: {stage}.')
 
         if self.clean_files:
             for fname in tuple(self._filenames_to_clean_afterwards):
@@ -393,16 +379,14 @@ class GenericRunner(object):
 
     def initial(self):
         self.command_options += ['--results', self.results_path]
-        result = self.make_oscap_call()
-        return result
+        return self.make_oscap_call()
 
     def remediation(self):
         raise NotImplementedError()
 
     def final(self):
         self.command_options += ['--results', self.results_path]
-        result = self.make_oscap_call()
-        return result
+        return self.make_oscap_call()
 
     def analyze(self, stage):
         triaged_results = triage_xml_results(self.results_path)
@@ -411,15 +395,14 @@ class GenericRunner(object):
         return triaged_results
 
     def _get_formatting_dict_for_remediation(self):
-        formatting = {
+        return {
             'domain_ip': self.environment.domain_ip,
             'profile': self.profile,
             'datastream': self.datastream,
-            'benchmark_id': self.benchmark_id
+            'benchmark_id': self.benchmark_id,
+            'arf': self.arf_path,
+            'arf_file': self.arf_file,
         }
-        formatting['arf'] = self.arf_path
-        formatting['arf_file'] = self.arf_file
-        return formatting
 
 
 class ProfileRunner(GenericRunner):
@@ -511,16 +494,7 @@ class RuleRunner(GenericRunner):
                            self._oscap_output,
                            re.MULTILINE)
 
-        if not match:
-            # When the rule is not selected, it won't match in output
-            return "notselected"
-
-        # When --remediation is executed, there will be two entries in
-        # progress output, one for fail, and one for fixed, e.g.
-        # xccdf_org....rule_accounts_password_minlen_login_defs:fail
-        # xccdf_org....rule_accounts_password_minlen_login_defs:fixed
-        # We are interested in the last one
-        return match[-1]
+        return match[-1] if match else "notselected"
 
     def _analyze_output_of_oscap_call(self):
         local_success = 1
@@ -616,8 +590,9 @@ class BashRuleRunner(RuleRunner):
         formatting = self._get_formatting_dict_for_remediation()
         formatting['output_file'] = '{0}.sh'.format(self.rule_id)
 
-        success = run_stage_remediation_bash('rule', self.environment, formatting, self.verbose_path)
-        return success
+        return run_stage_remediation_bash(
+            'rule', self.environment, formatting, self.verbose_path
+        )
 
 
 class AnsibleRuleRunner(RuleRunner):
@@ -631,8 +606,9 @@ class AnsibleRuleRunner(RuleRunner):
         formatting['playbook'] = os.path.join(LogHelper.LOG_DIR,
                                               formatting['output_file'])
 
-        success = run_stage_remediation_ansible('rule', self.environment, formatting, self.verbose_path)
-        return success
+        return run_stage_remediation_ansible(
+            'rule', self.environment, formatting, self.verbose_path
+        )
 
 
 class Checker(object):

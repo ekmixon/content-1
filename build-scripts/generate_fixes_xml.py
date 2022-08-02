@@ -33,10 +33,10 @@ def main():
     args = parse_args()
 
     if not os.path.isdir(args.fixdir):
-        sys.stderr.write("Directory %s does not exist" % args.fixdir)
+        sys.stderr.write(f"Directory {args.fixdir} does not exist")
         sys.exit(1)
 
-    fixes = dict()
+    fixes = {}
     for filename in sorted(os.listdir(args.fixdir)):
         file_path = os.path.join(args.fixdir, filename)
         fix_name, _ = os.path.splitext(filename)

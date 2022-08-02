@@ -8,12 +8,13 @@ Shows OVAL objects used by XCCDF rules.
 Author: Jan Cerny <jcerny@redhat.com>
 '''
 
+
 import argparse
 import xml.etree.ElementTree as ET
 import sys
 import os.path
 
-oval_files = dict()
+oval_files = {}
 xccdf_dir = None
 
 
@@ -32,7 +33,7 @@ def load_xml(file_name):
         root = it.root
         return root
     except:
-        sys.stderr.write("Error while loading file " + file_name + ".\n")
+        sys.stderr.write(f"Error while loading file {file_name}" + ".\n")
         exit(-1)
 
 
@@ -48,11 +49,15 @@ def find_oval_objects(oval_refs):
             oval_file_path = os.path.join(xccdf_dir, oval_file)
             oval_files[oval_file] = load_xml(oval_file_path)
         oval_root = oval_files[oval_file]
-        definition = None
-        for d in oval_root.findall(".//definition"):
-            if d.attrib.get('id') == def_id:
-                definition = d
-                break
+        definition = next(
+            (
+                d
+                for d in oval_root.findall(".//definition")
+                if d.attrib.get('id') == def_id
+            ),
+            None,
+        )
+
         if definition is not None:
             for criterion in definition.findall(".//criterion"):
                 test_ref = criterion.attrib["test_ref"]
@@ -60,11 +65,15 @@ def find_oval_objects(oval_refs):
 
     # find references to objects in tests
     for test in tests:
-        test_element = None
-        for t in oval_root.findall("tests/*"):
-            if t.attrib.get('id') == test:
-                test_element = t
-                break
+        test_element = next(
+            (
+                t
+                for t in oval_root.findall("tests/*")
+                if t.attrib.get('id') == test
+            ),
+            None,
+        )
+
         if test_element is not None:
             for object_element in test_element.findall(".//*"):
                 if 'object_ref' in object_element.attrib:
@@ -121,11 +130,11 @@ def main():
             oval_refs.append((oval_name, oval_file))
         if oval_refs:
             objects = find_oval_objects(oval_refs)
-            print(rule_id + ": " + ", ".join(objects))
+            print(f"{rule_id}: " + ", ".join(objects))
             for o in objects:
                 stats[o] = stats.get(o, 0) + 1
         else:
-            print(rule_id + ":")
+            print(f"{rule_id}:")
     print_stats(stats)
 
 

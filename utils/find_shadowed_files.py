@@ -35,9 +35,7 @@ def print_shadows(resource, language, product):
 
     for source_file in all_source_files:
         i = 0
-        while i < len(source_paths):
-            if source_file in source_files[i]:
-                break
+        while i < len(source_paths) and source_file not in source_files[i]:
             i += 1
 
         assert(i < len(source_paths))
@@ -55,9 +53,8 @@ def print_shadows(resource, language, product):
             )
 
             for shadow in shadows:
-                msg += " <- " + os.path.relpath(
-                    os.path.join(source_paths[shadow], source_file), SSG_DIR
-                )
+                msg += f" <- {os.path.relpath(os.path.join(source_paths[shadow], source_file), SSG_DIR)}"
+
 
             print(msg)
 
@@ -84,14 +81,14 @@ def main():
 
     for product in [args.product]:
         for check_lang in check_languages:
-            print("%s %s check shadows" % (product, check_lang))
+            print(f"{product} {check_lang} check shadows")
             print_shadows("checks", check_lang, product)
             print()
 
         print()
 
         for fix_lang in fix_languages:
-            print("%s %s fix shadows" % (product, fix_lang))
+            print(f"{product} {fix_lang} fix shadows")
             print_shadows("fixes", fix_lang, product)
             print()
 

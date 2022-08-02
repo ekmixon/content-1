@@ -140,8 +140,9 @@ class OVALFileLinker(FileLinker):
         indexed_oval_defs = map_elements_to_their_ids(
             self.tree, ".//{0}".format(self._get_checkid_string()))
 
-        defs_miss = get_oval_checks_extending_non_existing_checks(self.tree, indexed_oval_defs)
-        if defs_miss:
+        if defs_miss := get_oval_checks_extending_non_existing_checks(
+            self.tree, indexed_oval_defs
+        ):
             msg = ["Following extending definitions are missing:"]
             for missing, broken in transpose_dict_with_sets(defs_miss).items():
                 broken = [b.get("id") for b in broken]
@@ -194,7 +195,7 @@ class OVALFileLinker(FileLinker):
 
     def get_nested_definitions(self, oval_def_id):
         processed_def_ids = set()
-        queue = set([oval_def_id])
+        queue = {oval_def_id}
         while queue:
             def_id = queue.pop()
             processed_def_ids.add(def_id)
@@ -203,10 +204,10 @@ class OVALFileLinker(FileLinker):
                 print("WARNING: Definition '%s' was not found, can't figure "
                       "out what depends on it." % (def_id), file=sys.stderr)
                 continue
-            extensions = find_extending_defs(self.oval_groups, definition_tree)
-            if not extensions:
-                continue
-            queue |= extensions - processed_def_ids
+            if extensions := find_extending_defs(
+                self.oval_groups, definition_tree
+            ):
+                queue |= extensions - processed_def_ids
         return processed_def_ids
 
     def add_missing_check_exports(self, check, checkcontentref):
@@ -272,10 +273,14 @@ class OCILFileLinker(FileLinker):
 
 
 def _find_identcce(rule):
-    for ident in rule.findall("./{%s}ident" % XCCDF11_NS):
-        if ident.get("system") == cce_uri:
-            return ident
-    return None
+    return next(
+        (
+            ident
+            for ident in rule.findall("./{%s}ident" % XCCDF11_NS)
+            if ident.get("system") == cce_uri
+        ),
+        None,
+    )
 
 
 def rules_with_ids_generator(xccdftree):
@@ -455,16 +460,21 @@ def assert_that_check_ids_match_rule_id(checks, xccdf_rule):
         # Verify match of XCCDF vs OVAL / OCIL IDs for
         # * the case of OVAL <check>
         # * the case of OCIL <check>
-        if (xccdf_rule != check_name and check_name is not None and
-                xccdf_rule + '_ocil' != check_name and
-                xccdf_rule != 'sample_rule'):
-            msg_lines = ["The OVAL / OCIL ID does not match the XCCDF Rule ID!"]
-            if '_ocil' in check_name:
-                id_name = "OCIL ID"
-            else:
-                id_name = "OVAL ID"
-            msg_lines.append(" {0:>14}: {1}".format(id_name, check_name))
-            msg_lines.append(" {0:>14}: {1}".format("XCCDF Rule ID", xccdf_rule))
+        if (
+            xccdf_rule != check_name
+            and check_name is not None
+            and f'{xccdf_rule}_ocil' != check_name
+            and xccdf_rule != 'sample_rule'
+        ):
+            id_name = "OCIL ID" if '_ocil' in check_name else "OVAL ID"
+            msg_lines = [
+                "The OVAL / OCIL ID does not match the XCCDF Rule ID!",
+                *(
+                    " {0:>14}: {1}".format(id_name, check_name),
+                    " {0:>14}: {1}".format("XCCDF Rule ID", xccdf_rule),
+                ),
+            ]
+
             raise SSGError("\n".join(msg_lines))
 
 

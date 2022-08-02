@@ -42,16 +42,16 @@ def process_results(result_path):
         status = base_req.find("./{%s}status" % scapval_results_ns).text
         if status == "FAIL":
             if 'ssg-ocp4-ds' in result_path and id_ == "SRC-329":
-                print("    %s: %s" % (id_, "WARNING (Contains non-standardized yamlfilecontent_test)"))
+                print(f"    {id_}: WARNING (Contains non-standardized yamlfilecontent_test)")
             else:
-                print("    %s: %s" % (id_, status))
+                print(f"    {id_}: {status}")
                 ret_val = False
     return ret_val
 
 
 def test_datastream(datastream_path,  scapval_path, scap_version):
-    result_path = datastream_path + ".result.xml"
-    report_path = datastream_path + ".report.html"
+    result_path = f"{datastream_path}.result.xml"
+    report_path = f"{datastream_path}.report.html"
     scapval_command = [
             "java",
             "-Xmx1024m",
@@ -89,14 +89,14 @@ def main():
         ds_suffix = "-ds.xml"
     for filename in os.listdir(args.build_dir):
         if filename.endswith(ds_suffix):
-            print("Testing %s ..." % filename)
+            print(f"Testing {filename} ...")
             datastream_path = os.path.join(args.build_dir, filename)
-            datastream_result = test_datastream(
-                    datastream_path, args.scapval_path, args.scap_version)
-            if datastream_result:
-                print("%s: PASS" % filename)
+            if datastream_result := test_datastream(
+                datastream_path, args.scapval_path, args.scap_version
+            ):
+                print(f"{filename}: PASS")
             else:
-                print("%s: FAIL" % filename)
+                print(f"{filename}: FAIL")
                 overall_result = False
     if overall_result:
         sys.exit(0)

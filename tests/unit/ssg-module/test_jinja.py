@@ -7,7 +7,7 @@ import ssg.jinja
 
 def get_definitions_with_substitution(subs_dict=None):
     if subs_dict is None:
-        subs_dict = dict()
+        subs_dict = {}
 
     definitions = os.path.join(os.path.dirname(__file__), "data", "definitions.jinja")
     ssg.jinja.update_substitutions_dict(definitions, subs_dict)

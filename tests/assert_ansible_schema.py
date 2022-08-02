@@ -9,20 +9,9 @@ import sys
 import yaml
 
 
-COMMENT_KEYS = set((
-    "platform",
-    "reboot",
-    "strategy",
-    "complexity",
-    "disruption",
-))
+COMMENT_KEYS = {"platform", "reboot", "strategy", "complexity", "disruption"}
 
-TAGS = set((
-    "strategy",
-    "complexity",
-    "disruption",
-    "severity",
-))
+TAGS = {"strategy", "complexity", "disruption", "severity"}
 
 
 def make_parser():
@@ -40,9 +29,8 @@ def validate_comments(fname, args):
         .format(keys="|".join(COMMENT_KEYS)))
     with open(fname, "r") as lines:
         for line in lines:
-            found = re.search(regex, line)
-            if found:
-                caught_comments.add(found.group(1))
+            if found := re.search(regex, line):
+                caught_comments.add(found[1])
     assert COMMENT_KEYS == caught_comments, (
         "Did not found key(s) in comments: {keys}"
         .format(keys=", ".join(COMMENT_KEYS.difference(caught_comments))))
@@ -80,9 +68,8 @@ def validate_playbook(playbook, args):
         assert "@" not in tag, \
             "A playbook tag {tag} contains @, which is unexpected.".format(tag=tag)
 
-        found = re.search(tag_regex, tag)
-        if found:
-            caught_tags.add(found.group(1))
+        if found := re.search(tag_regex, tag):
+            caught_tags.add(found[1])
 
         if re.search(cce_regex, tag):
             caught_tags.add("CCE")

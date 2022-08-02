@@ -79,7 +79,7 @@ class XCCDFBenchmark(object):
                 tree = ElementTree.fromstring(file_string)
                 self.tree = tree
         except IOError as ioerr:
-            print("%s" % ioerr)
+            print(f"{ioerr}")
             sys.exit(1)
 
         self.indexed_rules = {}
@@ -89,7 +89,7 @@ class XCCDFBenchmark(object):
                 raise RuntimeError("Can't index a rule with no id attribute!")
 
             if rule_id in self.indexed_rules:
-                raise RuntimeError("Multiple rules exist with same id attribute: %s!" % rule_id)
+                raise RuntimeError(f"Multiple rules exist with same id attribute: {rule_id}!")
 
             self.indexed_rules[rule_id] = rule
 

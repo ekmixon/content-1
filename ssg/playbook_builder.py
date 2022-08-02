@@ -67,12 +67,11 @@ class PlaybookBuilder():
         """
         xccdf_var_pattern = re.compile(r"\(xccdf-var\s+(\S+)\)")
         tasks = []
-        values = dict()
+        values = {}
         for item in snippet_yaml:
             if isinstance(item, str):
-                match = xccdf_var_pattern.match(item)
-                if match:
-                    var_id = match.group(1)
+                if match := xccdf_var_pattern.match(item):
+                    var_id = match[1]
                     value = self.choose_variable_value(var_id, variables,
                                                        refinements)
                     values[var_id] = value
@@ -89,9 +88,9 @@ class PlaybookBuilder():
         values are dictionaries where keys are selectors and values are
         variable values.
         """
-        variables = dict()
+        variables = {}
         for cur_dir in [self.guide_dir] + self.add_content_dirs:
-            variables.update(self._get_rules_variables(cur_dir))
+            variables |= self._get_rules_variables(cur_dir)
         return variables
 
     def _get_rules_variables(self, base_dir):
@@ -104,13 +103,11 @@ class PlaybookBuilder():
                     full_path = os.path.join(dirpath, filename)
                     xccdf_value = ssg.build_yaml.Value.from_yaml(full_path)
                     # Make sure that selectors and values are strings
-                    options = dict()
-                    for k, v in xccdf_value.options.items():
-                        options[str(k)] = str(v)
+                    options = {str(k): str(v) for k, v in xccdf_value.options.items()}
                     yield (xccdf_value.id_, options,)
 
     def _find_rule_title(self, rule_id):
-        rule_path = os.path.join(self.rules_dir, rule_id + ".yml")
+        rule_path = os.path.join(self.rules_dir, f"{rule_id}.yml")
         rule_yaml = ssg.yaml.open_raw(rule_path)
         return rule_yaml["title"]
 
@@ -152,7 +149,7 @@ class PlaybookBuilder():
         play["tasks"] = play_tasks
 
         playbook = [play]
-        playbook_path = os.path.join(output_dir, rule_id + ".yml")
+        playbook_path = os.path.join(output_dir, f"{rule_id}.yml")
         with open(playbook_path, "w") as playbook_file:
             # write remediation metadata (complexity, strategy, etc.) first
             for k, v in fix.config.items():
@@ -175,10 +172,10 @@ class PlaybookBuilder():
                 % (profile_path, ext)
             )
 
-        profile = ssg.build_yaml.Profile.from_yaml(profile_path)
-        if not profile:
+        if profile := ssg.build_yaml.Profile.from_yaml(profile_path):
+            return profile
+        else:
             raise RuntimeError("Could not parse profile %s.\n" % profile_path)
-        return profile
 
     def create_playbooks_for_all_rules_in_profile(self, profile, variables):
         """
@@ -194,7 +191,7 @@ class PlaybookBuilder():
         os.makedirs(profile_playbooks_dir)
 
         for rule_id in profile_rules:
-            snippet_path = os.path.join(self.input_dir, rule_id + ".yml")
+            snippet_path = os.path.join(self.input_dir, f"{rule_id}.yml")
             if os.path.exists(snippet_path):
                 self.create_playbook(
                     snippet_path, rule_id, variables,
@@ -211,7 +208,7 @@ class PlaybookBuilder():
         profile_refines = profile.get_variable_selectors()
         profile_playbooks_dir = os.path.join(self.output_dir, profile.id_)
         os.makedirs(profile_playbooks_dir)
-        snippet_path = os.path.join(self.input_dir, rule_id + ".yml")
+        snippet_path = os.path.join(self.input_dir, f"{rule_id}.yml")
         if rule_id in profile_rules:
             self.create_playbook(
                 snippet_path, rule_id, variables,
@@ -226,7 +223,7 @@ class PlaybookBuilder():
         os.makedirs(profile_playbooks_dir)
         for rule in sorted(os.listdir(self.rules_dir)):
             rule_id, _ = os.path.splitext(rule)
-            snippet_path = os.path.join(self.input_dir, rule_id + ".yml")
+            snippet_path = os.path.join(self.input_dir, f"{rule_id}.yml")
             if not os.path.exists(snippet_path):
                 continue
             self.create_playbook(
@@ -249,7 +246,7 @@ class PlaybookBuilder():
                 profile = self.open_profile(profile_path)
             except ssg.yaml.DocumentationNotComplete as e:
                 msg = "Skipping incomplete profile {0}. To include incomplete " + \
-                    "profiles, build in debug mode.\n"
+                        "profiles, build in debug mode.\n"
                 sys.stderr.write(msg.format(profile_path))
                 continue
             except RuntimeError as e:
@@ -257,11 +254,7 @@ class PlaybookBuilder():
                 continue
             profiles[profile.id_] = profile
 
-        if profile_id:
-            to_process = [profile_id]
-        else:
-            to_process = list(profiles.keys())
-
+        to_process = [profile_id] if profile_id else list(profiles.keys())
         for p in to_process:
             profile = profiles[p]
             if rule_id:

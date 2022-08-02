@@ -83,8 +83,10 @@ def parse_affected(cur_dir, env_yaml):
                 assert isinstance(results[1], int)
 
             except ValueError as e:
-                print("No <affected> element found in file {}. "
-                      " Parsed XML was:\n{}".format(oval, xml_content))
+                print(
+                    f"No <affected> element found in file {oval}.  Parsed XML was:\n{xml_content}"
+                )
+
                 raise e
 
 

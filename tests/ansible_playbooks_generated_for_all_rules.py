@@ -39,7 +39,7 @@ def main():
     parser.add_argument("--product", required=True,
                         help="Product ID")
     args = parser.parse_args()
-    ds_path = os.path.join(args.build_dir, "ssg-" + args.product + "-ds.xml")
+    ds_path = os.path.join(args.build_dir, f"ssg-{args.product}-ds.xml")
     playbooks_dir_path = os.path.join(args.build_dir, args.product,
                                       "playbooks", "all")
     compare_ds_with_playbooks_dir(ds_path, playbooks_dir_path)

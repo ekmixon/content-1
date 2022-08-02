@@ -41,8 +41,7 @@ def parse_args():
         help="Path to which remediations will be generated. "
         "e.g.: ~/scap-security-guide/build/rhel7/fixes_from_templates"
     )
-    args = p.parse_args()
-    return args
+    return p.parse_args()
 
 
 if __name__ == "__main__":

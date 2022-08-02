@@ -105,8 +105,7 @@ def get_ovalfiles(checks):
                not checkcontentref_hrefattr.startswith("https://"):
                 ovalfiles.add(checkcontentref_hrefattr)
         elif check.get("system") != ocil_cs:
-            print("ERROR: Non-OVAL checking system found: %s"
-                  % (check.get("system")))
+            print(f'ERROR: Non-OVAL checking system found: {check.get("system")}')
             exit_value = 1
     return ovalfiles
 
@@ -124,8 +123,11 @@ def get_profileruleids(xccdftree, profile_name):
 
         if profile is None:
             sys.exit("Specified XCCDF Profile %s was not found.")
-        for select in profile.findall(".//{%s}select" % xccdf_ns):
-            ruleids.append(select.get("idref"))
+        ruleids.extend(
+            select.get("idref")
+            for select in profile.findall(".//{%s}select" % xccdf_ns)
+        )
+
         profile_name = profile.get("extends")
 
     return ruleids

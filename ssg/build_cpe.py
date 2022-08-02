@@ -89,12 +89,11 @@ class ProductCPEs(object):
 
     def get_cpe(self, ref):
         try:
-            if self._is_name(ref):
-                return self.cpes_by_name[ref]
-            else:
-                return self.cpes_by_id[ref]
+            return self.cpes_by_name[ref] if self._is_name(ref) else self.cpes_by_id[ref]
         except KeyError:
-            raise CPEDoesNotExist("CPE %s is not defined in %s" %(ref, self.product_yaml["cpes_root"]))
+            raise CPEDoesNotExist(
+                f'CPE {ref} is not defined in {self.product_yaml["cpes_root"]}'
+            )
 
 
     def get_cpe_name(self, cpe_id):
@@ -182,14 +181,13 @@ def extract_subelement(objects, sub_elem_type):
         # decide on usage of .iter or .getiterator method of elementtree class.
         # getiterator is deprecated in Python 3.9, but iter is not available in
         # older versions
-        if getattr(obj, "iter", None) == None:
+        if getattr(obj, "iter", None) is None:
             obj_iterator = obj.getiterator()
         else:
             obj_iterator = obj.iter()
         for subelement in obj_iterator:
             if subelement.get(sub_elem_type):
-                sub_element = subelement.get(sub_elem_type)
-                return sub_element
+                return subelement.get(sub_elem_type)
 
 
 def extract_env_obj(objects, local_var):
@@ -218,13 +216,10 @@ def extract_referred_nodes(tree_with_refs, tree_with_ids, attrname):
     """
 
     reflist = []
-    elementlist = []
-
-
     # decide on usage of .iter or .getiterator method of elementtree class.
     # getiterator is deprecated in Python 3.9, but iter is not available in
     # older versions
-    if getattr(tree_with_refs, "iter", None) == None:
+    if getattr(tree_with_refs, "iter", None) is None:
         tree_with_refs_iterator = tree_with_refs.getiterator()
     else:
         tree_with_refs_iterator = tree_with_refs.iter()
@@ -236,12 +231,12 @@ def extract_referred_nodes(tree_with_refs, tree_with_ids, attrname):
     # decide on usage of .iter or .getiterator method of elementtree class.
     # getiterator is deprecated in Python 3.9, but iter is not available in
     # older versions
-    if getattr(tree_with_ids, "iter", None) == None:
+    if getattr(tree_with_ids, "iter", None) is None:
         tree_with_ids_iterator = tree_with_ids.getiterator()
     else:
         tree_with_ids_iterator = tree_with_ids.iter()
-    for element in tree_with_ids_iterator:
-        if element.get("id") in reflist:
-            elementlist.append(element)
-
-    return elementlist
+    return [
+        element
+        for element in tree_with_ids_iterator
+        if element.get("id") in reflist
+    ]

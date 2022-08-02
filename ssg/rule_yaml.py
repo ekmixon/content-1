@@ -42,24 +42,26 @@ def find_section_lines(file_contents, sec):
     section = namedtuple('section', ['start', 'end'])
 
     sec_ranges = []
-    sec_id = sec + ":"
+    sec_id = f"{sec}:"
     sec_len = len(sec_id)
     end_num = len(file_contents)
     line_num = 0
 
     while line_num < end_num:
-        if len(file_contents[line_num]) >= sec_len:
-            if file_contents[line_num][0:sec_len] == sec_id:
-                begin = line_num
+        if (
+            len(file_contents[line_num]) >= sec_len
+            and file_contents[line_num][:sec_len] == sec_id
+        ):
+            begin = line_num
+            line_num += 1
+            while line_num < end_num:
+                nonempty_line = file_contents[line_num]
+                if nonempty_line and nonempty_line[0] != ' ':
+                    break
                 line_num += 1
-                while line_num < end_num:
-                    nonempty_line = file_contents[line_num]
-                    if nonempty_line and file_contents[line_num][0] != ' ':
-                        break
-                    line_num += 1
 
-                end = line_num - 1
-                sec_ranges.append(section(begin, end))
+            end = line_num - 1
+            sec_ranges.append(section(begin, end))
         line_num += 1
 
     return sec_ranges
@@ -74,7 +76,7 @@ def add_key_value(contents, key, start_line, new_value):
     """
 
     new_contents = contents[:start_line]
-    new_contents.append("%s: %s" % (key, new_value))
+    new_contents.append(f"{key}: {new_value}")
     new_contents.append("")
     new_contents.extend(contents[start_line:])
 
@@ -93,13 +95,13 @@ def update_key_value(contents, key, old_value, new_value):
     """
 
     new_contents = contents[:]
-    old_line = key + ": " + old_value
+    old_line = f"{key}: {old_value}"
     updated = False
 
-    for line_num in range(0, len(new_contents)):
+    for line_num in range(len(new_contents)):
         line = new_contents[line_num]
         if line == old_line:
-            new_contents[line_num] = key + ": " + new_value
+            new_contents[line_num] = f"{key}: {new_value}"
             updated = True
             break
 
@@ -143,8 +145,11 @@ def get_yaml_contents(rule_obj):
 
     yaml_file = get_rule_dir_yaml(rule_obj['dir'])
     if not os.path.exists(yaml_file):
-        raise ValueError("Error: yaml file does not exist for rule_id:%s" %
-                         rule_obj['id'], file=sys.stderr)
+        raise ValueError(
+            f"Error: yaml file does not exist for rule_id:{rule_obj['id']}",
+            file=sys.stderr,
+        )
+
 
     yaml_contents = read_file_list(yaml_file)
 

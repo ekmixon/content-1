@@ -50,8 +50,7 @@ SSH_ADDITIONAL_OPTS = (
 
 def walk_through_benchmark_dirs():
     for dirname in _BENCHMARK_DIRS:
-        for dirpath, dirnames, filenames in os.walk(dirname):
-            yield dirpath, dirnames, filenames
+        yield from os.walk(dirname)
 
 
 class Stage(object):
@@ -80,7 +79,7 @@ class RuleResult(object):
         self.scenario = Scenario_run("", "")
         self.conditions = Scenario_conditions("", "", "", "")
         self.when = ""
-        self.passed_stages = dict()
+        self.passed_stages = {}
         self.passed_stages_count = 0
         self.success = False
 
@@ -104,16 +103,15 @@ class RuleResult(object):
                 and data.get("initial_scan", False))
 
     def save_to_dict(self):
-        data = dict()
-        data["rule_id"] = self.scenario.rule_id
-        data["scenario_script"] = self.scenario.script
-
-        data["backend"] = self.conditions.backend
-        data["scanning_mode"] = self.conditions.scanning_mode
-        data["remediated_by"] = self.conditions.remediated_by
-        data["datastream"] = self.conditions.datastream
-
-        data["run_timestamp"] = self.when
+        data = {
+            "rule_id": self.scenario.rule_id,
+            "scenario_script": self.scenario.script,
+            "backend": self.conditions.backend,
+            "scanning_mode": self.conditions.scanning_mode,
+            "remediated_by": self.conditions.remediated_by,
+            "datastream": self.conditions.datastream,
+            "run_timestamp": self.when,
+        }
 
         for stage_str, result in self.passed_stages.items():
             data[stage_str] = result
@@ -143,7 +141,7 @@ class RuleResult(object):
 
 def run_cmd_local(command, verbose_path, env=None):
     command_string = ' '.join(command)
-    logging.debug('Running {}'.format(command_string))
+    logging.debug(f'Running {command_string}')
     returncode, output = _run_cmd(command, verbose_path, env)
     return returncode, output
 
@@ -168,8 +166,9 @@ def _get_platform_cpes(platform):
             products = MULTI_PLATFORM_MAPPING[platform]
         except KeyError:
             logging.error(
-                "Unknown multi_platform specifier: %s is not from %s"
-                % (platform, ", ".join(MULTI_PLATFORM_MAPPING.keys())))
+                f'Unknown multi_platform specifier: {platform} is not from {", ".join(MULTI_PLATFORM_MAPPING.keys())}'
+            )
+
             raise ValueError
         platform_cpes = set()
         for p in products:
@@ -177,21 +176,22 @@ def _get_platform_cpes(platform):
             product_yaml = load_product_yaml(product_yaml_path)
             p_cpes = ProductCPEs(product_yaml)
             platform_cpes |= set(p_cpes.get_product_cpe_names())
-        return platform_cpes
     else:
         # scenario platform is specified by a full product name
         try:
             product = FULL_NAME_TO_PRODUCT_MAPPING[platform]
         except KeyError:
             logging.error(
-                "Unknown product name: %s is not from %s"
-                % (platform, ", ".join(FULL_NAME_TO_PRODUCT_MAPPING.keys())))
+                f'Unknown product name: {platform} is not from {", ".join(FULL_NAME_TO_PRODUCT_MAPPING.keys())}'
+            )
+
             raise ValueError
         product_yaml_path = os.path.join(ssg_root, "products", product, "product.yml")
         product_yaml = load_product_yaml(product_yaml_path)
         product_cpes = ProductCPEs(product_yaml)
         platform_cpes = set(product_cpes.get_product_cpe_names())
-        return platform_cpes
+
+    return platform_cpes
 
 
 def matches_platform(scenario_platforms, benchmark_cpes):
@@ -221,9 +221,7 @@ def _exclude_garbage(tarinfo):
     file_name = tarinfo.name
     if file_name.endswith('pyc'):
         return None
-    if file_name.endswith('swp'):
-        return None
-    return tarinfo
+    return None if file_name.endswith('swp') else tarinfo
 
 
 def _make_file_root_owned(tarinfo):
@@ -301,10 +299,12 @@ def iterate_over_rules():
             # or other content than a test case.
             scripts = filter(lambda x: x.endswith(".sh"), tests_dir_files)
             full_rule_id = OSCAP_RULE + short_rule_id
-            result = Rule(
-                directory=tests_dir, id=full_rule_id, short_id=short_rule_id,
-                files=scripts)
-            yield result
+            yield Rule(
+                directory=tests_dir,
+                id=full_rule_id,
+                short_id=short_rule_id,
+                files=scripts,
+            )
 
 
 def get_cpe_of_tested_os(test_env, log_file):
@@ -358,10 +358,9 @@ def cpes_to_platform(cpes):
         if "fedora" in cpe:
             return "fedora"
         if "redhat:enterprise_linux" in cpe:
-            match = re.search(r":enterprise_linux:([^:]+):", cpe)
-            if match:
+            if match := re.search(r":enterprise_linux:([^:]+):", cpe):
                 major_version = match.groups()[0].split(".")[0]
-                return "rhel" + major_version
+                return f"rhel{major_version}"
         if "ubuntu" in cpe:
             return "ubuntu"
     msg = "Unable to deduce a platform from these CPEs: {cpes}".format(cpes=cpes)

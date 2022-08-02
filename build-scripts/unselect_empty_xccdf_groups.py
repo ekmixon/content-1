@@ -117,18 +117,21 @@ def main():
                 existing_selects = \
                     list(profile_element.findall("./{%s}select" % (XCCDF11_NS)))
 
-                new_select = None
-                for existing_select in existing_selects:
-                    # prevent idref duplication
-                    if existing_select.get("idref") == group_element.get("id"):
-                        new_select = existing_select
-                        break
+                new_select = next(
+                    (
+                        existing_select
+                        for existing_select in existing_selects
+                        if existing_select.get("idref")
+                        == group_element.get("id")
+                    ),
+                    None,
+                )
 
                 if new_select is None:
                     new_select = \
                         ssg.xml.ElementTree.Element("{%s}select" % (XCCDF11_NS))
                     index = 0
-                    if len(existing_selects) > 0:
+                    if existing_selects:
                         prev_element = existing_selects[-1]
                         # insert before the first notice
                         index = list(profile_element).index(prev_element) + 1

@@ -149,7 +149,7 @@ def load_macros(substitutions_dict=None):
     Augment the substitutions_dict dict with project Jinja macros in /shared/.
     """
     if substitutions_dict is None:
-        substitutions_dict = dict()
+        substitutions_dict = {}
 
     add_python_functions(substitutions_dict)
     try:

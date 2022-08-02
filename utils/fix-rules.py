@@ -12,24 +12,24 @@ import ssg
 
 def has_empty_identifier(yaml_file, product_yaml=None):
     rule = yaml.open_and_macro_expand(yaml_file, product_yaml)
-    if 'identifiers' in rule and rule['identifiers'] is None:
-        return True
+    if 'identifiers' in rule:
+        if rule['identifiers'] is None:
+            return True
 
-    if 'identifiers' in rule and rule['identifiers'] is not None:
         for _, value in rule['identifiers'].items():
-            if str(value).strip() == "":
+            if not str(value).strip():
                 return True
     return False
 
 
 def has_empty_references(yaml_file, product_yaml=None):
     rule = yaml.open_and_macro_expand(yaml_file, product_yaml)
-    if 'references' in rule and rule['references'] is None:
-        return True
+    if 'references' in rule:
+        if rule['references'] is None:
+            return True
 
-    if 'references' in rule and rule['references'] is not None:
         for _, value in rule['references'].items():
-            if str(value).strip() == "":
+            if not str(value).strip():
                 return True
     return False
 
@@ -38,10 +38,10 @@ def has_prefix_cce(yaml_file, product_yaml=None):
     rule = yaml.open_and_macro_expand(yaml_file, product_yaml)
     if 'identifiers' in rule and rule['identifiers'] is not None:
         for i_type, i_value in rule['identifiers'].items():
-            if i_type[0:3] == 'cce':
-                has_prefix = i_value[0:3].upper() == 'CCE'
-                remainder_valid = checks.is_cce_format_valid("CCE-" + i_value[3:])
-                remainder_valid |= checks.is_cce_format_valid("CCE-" + i_value[4:])
+            if i_type[:3] == 'cce':
+                has_prefix = i_value[:3].upper() == 'CCE'
+                remainder_valid = checks.is_cce_format_valid(f"CCE-{i_value[3:]}")
+                remainder_valid |= checks.is_cce_format_valid(f"CCE-{i_value[4:]}")
                 return has_prefix and remainder_valid
     return False
 
@@ -50,9 +50,10 @@ def has_invalid_cce(yaml_file, product_yaml=None):
     rule = yaml.open_and_macro_expand(yaml_file, product_yaml)
     if 'identifiers' in rule and rule['identifiers'] is not None:
         for i_type, i_value in rule['identifiers'].items():
-            if i_type[0:3] == 'cce':
-                if not checks.is_cce_value_valid("CCE-" + str(i_value)):
-                    return True
+            if i_type[:3] == 'cce' and not checks.is_cce_value_valid(
+                f"CCE-{str(i_value)}"
+            ):
+                return True
     return False
 
 
@@ -112,9 +113,6 @@ def find_rules(directory, func):
             # for d in dirs:
             #     product_yamls[os.path.join(root, d)] = product_yaml
             #     product_yaml_paths[os.path.join(root, d)] = product_yaml_path
-        else:
-            pass
-
         for filename in files:
             path = os.path.join(root, filename)
             rule_filename_id = 'rule.yml'
@@ -127,15 +125,15 @@ def find_rules(directory, func):
                 if func(path, product_yaml):
                     results.append((path, product_yaml_path))
             except jinja2.exceptions.UndefinedError:
-                print("Failed to parse file %s (with product.yml: %s). Skipping"
-                      % (path, product_yaml_path))
-                pass
+                print(
+                    f"Failed to parse file {path} (with product.yml: {product_yaml_path}). Skipping"
+                )
 
     return results
 
 
 def print_file(file_contents):
-    for line_num in range(0, len(file_contents)):
+    for line_num in range(len(file_contents)):
         print("%d: %s" % (line_num, file_contents[line_num]))
 
 
@@ -157,35 +155,36 @@ def find_section_lines(file_contents, sec):
     # identified and returned.
     sec_ranges = []
 
-    sec_id = sec + ":"
+    sec_id = f"{sec}:"
     sec_len = len(sec_id)
     end_num = len(file_contents)
     line_num = 0
 
     while line_num < end_num:
-        if len(file_contents[line_num]) >= sec_len:
-            if file_contents[line_num][0:sec_len] == sec_id:
-                begin = line_num
+        if (
+            len(file_contents[line_num]) >= sec_len
+            and file_contents[line_num][:sec_len] == sec_id
+        ):
+            begin = line_num
+            line_num += 1
+            while line_num < end_num and not (
+                len(file_contents[line_num]) > 0
+                and file_contents[line_num][0] != ' '
+            ):
                 line_num += 1
-                while line_num < end_num:
-                    if len(file_contents[line_num]) > 0 and file_contents[line_num][0] != ' ':
-                        break
-                    line_num += 1
 
-                end = line_num - 1
-                sec_ranges.append((begin, end))
+            end = line_num - 1
+            sec_ranges.append((begin, end))
         line_num += 1
     return sec_ranges
 
 
 def remove_lines(file_contents, lines):
-    # Returns a series of lines and returns a new copy
-    new_file = []
-    for line_num in range(0, len(file_contents)):
-        if line_num not in lines:
-            new_file.append(file_contents[line_num])
-
-    return new_file
+    return [
+        file_contents[line_num]
+        for line_num in range(len(file_contents))
+        if line_num not in lines
+    ]
 
 
 def remove_section_keys(file_contents, yaml_contents, section, removed_keys):
@@ -213,8 +212,8 @@ def remove_section_keys(file_contents, yaml_contents, section, removed_keys):
 
             for key in removed_keys:
                 k_l = len(key)+1
-                k_i = key + ":"
-                if len_line >= k_l and line[0:k_l] == k_i:
+                k_i = f"{key}:"
+                if len_line >= k_l and line[:k_l] == k_i:
                     r_lines.add(line_num)
                     break
 
@@ -225,23 +224,23 @@ def rewrite_value_int_str(line):
     # Rewrites a key's value to explicitly be a string. Assumes it starts
     # as an integer. Takes a line.
     key_end = line.index(':')
-    key = line[0:key_end]
+    key = line[:key_end]
     value = line[key_end+1:].strip()
     str_value = '"' + value + '"'
-    return key + ": " + str_value
+    return f"{key}: {str_value}"
 
 
 def rewrite_value_remove_prefix(line):
     # Rewrites a key's value to remove a "CCE" prefix.
     key_end = line.index(':')
-    key = line[0:key_end]
+    key = line[:key_end]
     value = line[key_end+1:].strip()
     new_value = value
-    if checks.is_cce_format_valid("CCE-" + value[3:]):
+    if checks.is_cce_format_valid(f"CCE-{value[3:]}"):
         new_value = value[3:]
-    elif checks.is_cce_format_valid("CCE-" + value[4:]):
+    elif checks.is_cce_format_valid(f"CCE-{value[4:]}"):
         new_value = value[4:]
-    return key + ": " + new_value
+    return f"{key}: {new_value}"
 
 
 def rewrite_section_value(file_contents, yaml_contents, section, keys, transform):
@@ -265,9 +264,9 @@ def rewrite_section_value(file_contents, yaml_contents, section, keys, transform
 
         for key in keys:
             k_l = len(key)+1
-            k_i = key + ":"
+            k_i = f"{key}:"
 
-            if len_line >= k_l and line[0:k_l] == k_i:
+            if len_line >= k_l and line[:k_l] == k_i:
                 new_contents[line_num] = transform(file_contents[line_num])
                 break
 
@@ -284,9 +283,11 @@ def fix_empty_identifier(file_contents, yaml_contents):
 
     empty_identifiers = []
     if yaml_contents[section] is not None:
-        for i_type, i_value in yaml_contents[section].items():
-            if str(i_value).strip() == "":
-                empty_identifiers.append(i_type)
+        empty_identifiers.extend(
+            i_type
+            for i_type, i_value in yaml_contents[section].items()
+            if not str(i_value).strip()
+        )
 
     return remove_section_keys(file_contents, yaml_contents, section, empty_identifiers)
 
@@ -297,9 +298,11 @@ def fix_empty_reference(file_contents, yaml_contents):
     empty_identifiers = []
 
     if yaml_contents[section] is not None:
-        for i_type, i_value in yaml_contents[section].items():
-            if str(i_value).strip() == "":
-                empty_identifiers.append(i_type)
+        empty_identifiers.extend(
+            i_type
+            for i_type, i_value in yaml_contents[section].items()
+            if not str(i_value).strip()
+        )
 
     return remove_section_keys(file_contents, yaml_contents, section, empty_identifiers)
 
@@ -311,10 +314,10 @@ def fix_prefix_cce(file_contents, yaml_contents):
 
     if yaml_contents[section] is not None:
         for i_type, i_value in yaml_contents[section].items():
-            if i_type[0:3] == 'cce':
-                has_prefix = i_value[0:3].upper() == 'CCE'
-                remainder_valid = checks.is_cce_format_valid("CCE-" + str(i_value[3:]))
-                remainder_valid |= checks.is_cce_format_valid("CCE-" + str(i_value[4:]))
+            if i_type[:3] == 'cce':
+                has_prefix = i_value[:3].upper() == 'CCE'
+                remainder_valid = checks.is_cce_format_valid(f"CCE-{str(i_value[3:])}")
+                remainder_valid |= checks.is_cce_format_valid(f"CCE-{str(i_value[4:])}")
                 if has_prefix and remainder_valid:
                     prefixed_identifiers.append(i_type)
 
@@ -328,10 +331,12 @@ def fix_invalid_cce(file_contents, yaml_contents):
     invalid_identifiers = []
 
     if yaml_contents[section] is not None:
-        for i_type, i_value in yaml_contents[section].items():
-            if i_type[0:3] == 'cce':
-                if not checks.is_cce_value_valid("CCE-" + str(i_value)):
-                    invalid_identifiers.append(i_type)
+        invalid_identifiers.extend(
+            i_type
+            for i_type, i_value in yaml_contents[section].items()
+            if i_type[:3] == 'cce'
+            and not checks.is_cce_value_valid(f"CCE-{str(i_value)}")
+        )
 
     return remove_section_keys(file_contents, yaml_contents, section, invalid_identifiers)
 
@@ -339,10 +344,11 @@ def fix_invalid_cce(file_contents, yaml_contents):
 def fix_int_identifier(file_contents, yaml_contents):
     section = 'identifiers'
 
-    int_identifiers = []
-    for i_type, i_value in yaml_contents[section].items():
-        if type(i_value) != str:
-            int_identifiers.append(i_type)
+    int_identifiers = [
+        i_type
+        for i_type, i_value in yaml_contents[section].items()
+        if type(i_value) != str
+    ]
 
     return rewrite_section_value_int_str(file_contents, yaml_contents, section, int_identifiers)
 
@@ -350,10 +356,11 @@ def fix_int_identifier(file_contents, yaml_contents):
 def fix_int_reference(file_contents, yaml_contents):
     section = 'references'
 
-    int_identifiers = []
-    for i_type, i_value in yaml_contents[section].items():
-        if type(i_value) != str:
-            int_identifiers.append(i_type)
+    int_identifiers = [
+        i_type
+        for i_type, i_value in yaml_contents[section].items()
+        if type(i_value) != str
+    ]
 
     return rewrite_section_value_int_str(file_contents, yaml_contents, section, int_identifiers)
 
@@ -374,14 +381,13 @@ def fix_file(path, product_yaml, func):
     print("====BEGIN AFTER====")
     print_file(file_contents)
     print("====END AFTER====")
-    response = input_func("Confirm writing output to %s: (y/n): " % path)
+    response = input_func(f"Confirm writing output to {path}: (y/n): ")
     if response.strip() == 'y':
-        f = open(path, 'w')
-        for line in file_contents:
-            f.write(line)
-            f.write("\n")
-        f.flush()
-        f.close()
+        with open(path, 'w') as f:
+            for line in file_contents:
+                f.write(line)
+                f.write("\n")
+            f.flush()
 
 
 def fix_empty_identifiers(directory):

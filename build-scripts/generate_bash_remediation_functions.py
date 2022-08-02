@@ -62,7 +62,7 @@ def main():
         source = preprocess_source(context, os.path.join(args.input_dir, file_))
 
         value_element = ssg.xml.ElementTree.SubElement(root, "Value")
-        value_element.set("id", "function_%s" % (filename))
+        value_element.set("id", f"function_{filename}")
         value_element.set("type", "string")
         value_element.set("operator", "equals")
         value_element.set("interactive", "0")
@@ -70,7 +70,7 @@ def main():
         value_element.set("prohibitChanges", "true")
 
         title = ssg.xml.ElementTree.SubElement(value_element, "title")
-        title.text = "Remediation function %s" % (filename)
+        title.text = f"Remediation function {filename}"
 
         desc = ssg.xml.ElementTree.SubElement(value_element, "description")
         desc.text = "Shared bash remediation function. Not intended to be " \

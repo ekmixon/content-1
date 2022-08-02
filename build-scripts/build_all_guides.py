@@ -51,7 +51,7 @@ def main():
 
     input_path, input_basename, path_base, output_dir = \
         ssg.build_guides.get_path_args(args)
-    index_path = os.path.join(output_dir, "%s-guide-index.html" % (path_base))
+    index_path = os.path.join(output_dir, f"{path_base}-guide-index.html")
 
     if args.cmd == "list_inputs":
         print(input_path)

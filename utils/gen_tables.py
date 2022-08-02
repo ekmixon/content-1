@@ -43,7 +43,7 @@ class Output(object):
                 "correctly and that the appropriate product is built.".format(path=path)
             )
             raise ValueError(msg)
-        rules_dict = dict()
+        rules_dict = {}
         for r_file in rule_files:
             rule = ssg.build_yaml.Rule.from_yaml(r_file)
             rules_dict[rule.id_] = rule

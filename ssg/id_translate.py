@@ -27,9 +27,7 @@ def _namespace_to_prefix(tag):
     if namespace == oval_ns:
         return "oval"
 
-    raise RuntimeError(
-        "Error: unknown checksystem referenced in tag : %s" % tag
-    )
+    raise RuntimeError(f"Error: unknown checksystem referenced in tag : {tag}")
 
 
 def _tagname_to_abbrev(tag):
@@ -43,9 +41,7 @@ def _tagname_to_abbrev(tag):
     if namespace == oval_ns:
         return OVALTAG_TO_ABBREV[tag]
 
-    raise RuntimeError(
-        "Error: unknown checksystem referenced in tag : %s" % tag
-    )
+    raise RuntimeError(f"Error: unknown checksystem referenced in tag : {tag}")
 
 
 class IDTranslator(object):
@@ -57,26 +53,21 @@ class IDTranslator(object):
         self.content_id = content_id
 
     def generate_id(self, tagname, name):
-        return "%s:%s-%s:%s:1" % (
-            _namespace_to_prefix(tagname),
-            self.content_id, name,
-            _tagname_to_abbrev(tagname)
-        )
+        return f"{_namespace_to_prefix(tagname)}:{self.content_id}-{name}:{_tagname_to_abbrev(tagname)}:1"
 
     def translate(self, tree, store_defname=False):
         # decide on usage of .iter or .getiterator method of elementtree class.
         # getiterator is deprecated in Python 3.9, but iter is not available in
         # older versions
-        if getattr(tree, "iter", None) == None:
+        if getattr(tree, "iter", None) is None:
             tree_iterator = tree.getiterator()
         else:
             tree_iterator = tree.iter()
         for element in tree_iterator:
-            idname = element.get("id")
-            if idname:
+            if idname := element.get("id"):
                 # store the old name if requested (for OVAL definitions)
                 if store_defname and \
-                        element.tag == "{%s}definition" % oval_ns:
+                            element.tag == "{%s}definition" % oval_ns:
                     metadata = element.find("{%s}metadata" % oval_ns)
                     if metadata is None:
                         metadata = ElementTree.SubElement(element, "metadata")
@@ -86,7 +77,6 @@ class IDTranslator(object):
 
                 # set the element to the new identifier
                 element.set("id", self.generate_id(element.tag, idname))
-                # continue
             if element.tag == "{%s}filter" % oval_ns:
                 element.text = self.generate_id("{%s}state" % oval_ns,
                                                 element.text)

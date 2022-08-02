@@ -38,8 +38,7 @@ def get_all_xccdf_ids_in_datastream(datastream):
 
     all_checklist_components = checklists_node.findall('ds:component-ref',
                                                        PREFIX_TO_NS)
-    xccdf_ids = [component.get("id") for component in all_checklist_components]
-    return xccdf_ids
+    return [component.get("id") for component in all_checklist_components]
 
 
 def infer_benchmark_id_from_component_ref_id(datastream, ref_id):
@@ -47,21 +46,16 @@ def infer_benchmark_id_from_component_ref_id(datastream, ref_id):
     component_ref_node = root.find("*//ds:component-ref[@id='{0}']"
                                    .format(ref_id), PREFIX_TO_NS)
     if component_ref_node is None:
-        msg = (
-            'Component reference of Ref-Id {} not found within datastream'
-            .format(ref_id))
+        msg = f'Component reference of Ref-Id {ref_id} not found within datastream'
         raise RuntimeError(msg)
 
     comp_id = component_ref_node.get('{%s}href' % PREFIX_TO_NS['xlink'])
     comp_id = comp_id.lstrip('#')
 
-    query = ".//ds:component[@id='{}']/xccdf-1.2:Benchmark".format(comp_id)
+    query = f".//ds:component[@id='{comp_id}']/xccdf-1.2:Benchmark"
     benchmark_node = root.find(query, PREFIX_TO_NS)
     if benchmark_node is None:
-        msg = (
-            'Benchmark not found within component of Id {}'
-            .format(comp_id)
-        )
+        msg = f'Benchmark not found within component of Id {comp_id}'
         raise RuntimeError(msg)
 
     return benchmark_node.get('id')
@@ -73,8 +67,7 @@ def datastream_root(ds_location, save_location=None):
         tree = ET.parse(ds_location)
         for prefix, uri in PREFIX_TO_NS.items():
             ET.register_namespace(prefix, uri)
-        root = tree.getroot()
-        yield root
+        yield tree.getroot()
     finally:
         if save_location:
             tree.write(save_location)
@@ -145,9 +138,8 @@ def get_oscap_supported_cpes():
 
     cpe_regex = re.compile(r'\bcpe:\S+$')
     for line in outs.decode().split("\n"):
-        match = cpe_regex.search(line)
-        if match:
-            result.append(match.group(0))
+        if match := cpe_regex.search(line):
+            result.append(match[0])
     return result
 
 
@@ -163,11 +155,7 @@ def add_platform_to_benchmark(root, cpe_regex):
     all_cpes = get_oscap_supported_cpes()
     regex = re.compile(cpe_regex)
 
-    cpes_to_add = []
-    for cpe_str in all_cpes:
-        if regex.search(cpe_str):
-            cpes_to_add.append(cpe_str)
-
+    cpes_to_add = [cpe_str for cpe_str in all_cpes if regex.search(cpe_str)]
     if not cpes_to_add:
         cpes_to_add = [cpe_regex]
 
@@ -188,25 +176,20 @@ def _get_benchmark_node(datastream, benchmark_id, logging):
     root = ET.parse(datastream).getroot()
     benchmark_node = root.find(
         "*//xccdf-1.2:Benchmark[@id='{0}']".format(benchmark_id), PREFIX_TO_NS)
-    if benchmark_node is None:
-        if logging is not None:
-            logging.error(
-                "Benchmark ID '{}' not found within DataStream"
-                .format(benchmark_id))
+    if benchmark_node is None and logging is not None:
+        logging.error(f"Benchmark ID '{benchmark_id}' not found within DataStream")
     return benchmark_node
 
 
 def get_all_profiles_in_benchmark(datastream, benchmark_id, logging=None):
     benchmark_node = _get_benchmark_node(datastream, benchmark_id, logging)
-    all_profiles = benchmark_node.findall('xccdf-1.2:Profile', PREFIX_TO_NS)
-    return all_profiles
+    return benchmark_node.findall('xccdf-1.2:Profile', PREFIX_TO_NS)
 
 
 def get_all_rule_selections_in_profile(datastream, benchmark_id, profile_id, logging=None):
     benchmark_node = _get_benchmark_node(datastream, benchmark_id, logging)
     profile = benchmark_node.find("xccdf-1.2:Profile[@id='{0}']".format(profile_id), PREFIX_TO_NS)
-    rule_selections = profile.findall("xccdf-1.2:select[@selected='true']", PREFIX_TO_NS)
-    return rule_selections
+    return profile.findall("xccdf-1.2:select[@selected='true']", PREFIX_TO_NS)
 
 
 def get_all_rule_ids_in_profile(datastream, benchmark_id, profile_id, logging=None):
@@ -226,8 +209,7 @@ def benchmark_get_applicable_platforms(datastream, benchmark_id, logging=None):
     """
     benchmark_node = _get_benchmark_node(datastream, benchmark_id, logging)
     platform_elements = benchmark_node.findall('xccdf-1.2:platform', PREFIX_TO_NS)
-    cpes = {platform_el.get("idref") for platform_el in platform_elements}
-    return cpes
+    return {platform_el.get("idref") for platform_el in platform_elements}
 
 
 def find_rule_in_benchmark(datastream, benchmark_id, rule_id, logging=None):
@@ -235,8 +217,9 @@ def find_rule_in_benchmark(datastream, benchmark_id, rule_id, logging=None):
     Returns rule node from the given benchmark.
     """
     benchmark_node = _get_benchmark_node(datastream, benchmark_id, logging)
-    rule = benchmark_node.find(".//xccdf-1.2:Rule[@id='{0}']".format(rule_id), PREFIX_TO_NS)
-    return rule
+    return benchmark_node.find(
+        ".//xccdf-1.2:Rule[@id='{0}']".format(rule_id), PREFIX_TO_NS
+    )
 
 
 def find_fix_in_benchmark(datastream, benchmark_id, rule_id, fix_type='bash', logging=None):
@@ -249,5 +232,6 @@ def find_fix_in_benchmark(datastream, benchmark_id, rule_id, fix_type='bash', lo
 
     system_attribute = SYSTEM_ATTRIBUTE.get(fix_type, bash_rem_system)
 
-    fix = rule.find("xccdf-1.2:fix[@system='{0}']".format(system_attribute), PREFIX_TO_NS)
-    return fix
+    return rule.find(
+        "xccdf-1.2:fix[@system='{0}']".format(system_attribute), PREFIX_TO_NS
+    )

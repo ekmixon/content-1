@@ -29,8 +29,7 @@ class ProfileChecker(ssg_test_suite.oscap.Checker):
             self.test_env, profile, self.datastream, self.benchmark_id)
 
         for stage in ("initial", "remediation", "final"):
-            result = runner.run_stage(stage)
-            if result:
+            if result := runner.run_stage(stage):
                 logging.info("Evaluation of the profile has passed: {0} ({1} stage).".format(profile, stage))
             else:
                 logging.error("Evaluation of the profile has failed: {0} ({1} stage).".format(profile, stage))

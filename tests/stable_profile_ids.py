@@ -90,10 +90,7 @@ def respective_datastream_absent(bench_id, build_dir):
 
     datastream_filename = "ssg-{stem}-ds.xml".format(stem=BENCHMARK_TO_FILE_STEM[bench_id])
     datastream_path = os.path.join(build_dir, datastream_filename)
-    if not os.path.isfile(datastream_path):
-        return True
-    else:
-        return False
+    return not os.path.isfile(datastream_path)
 
 
 def check_build_dir(build_dir):

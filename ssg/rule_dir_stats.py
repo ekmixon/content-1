@@ -65,14 +65,12 @@ def _walk_rule(args, rule_obj, oval_func, remediation_func, verbose_output):
         return False
 
     if not args.fixes_only:
-        result = oval_func(rule_obj)
-        if result:
+        if result := oval_func(rule_obj):
             verbose_output[rule_id]['oval'] = result
 
     if not args.ovals_only:
         for r_type in REMEDIATION_MAP:
-            result = remediation_func(rule_obj, r_type)
-            if result:
+            if result := remediation_func(rule_obj, r_type):
                 verbose_output[rule_id][r_type] = result
 
     return True
@@ -230,12 +228,12 @@ def walk_rules_parallel(args, left_rules, right_rules, oval_func, remediation_fu
             right_ret = _walk_rule(args, right_rule_obj, oval_func, remediation_func, right_temp)
 
             if left_ret == right_ret and left_temp == right_temp:
-                common_verbose_output.update(left_temp)
+                common_verbose_output |= left_temp
                 if left_ret:
                     common_affected_rules += 1
             else:
-                left_verbose_output.update(left_temp)
-                right_verbose_output.update(right_temp)
+                left_verbose_output |= left_temp
+                right_verbose_output |= right_temp
                 if left_ret:
                     left_affected_rules += 1
                 if right_ret:
@@ -450,14 +448,13 @@ def prodtypes_remediation(rule_obj, r_type):
         return
 
     remediation_products = set()
-    for remediation in rule_obj.get('remediations', dict()).get(r_type, dict()):
+    for remediation in rule_obj.get('remediations', {}).get(r_type, {}):
         remediation_products.update(rule_obj['remediations'][r_type][remediation]['products'])
     if not remediation_products:
         return
 
     sym_diff = sorted(rule_products.symmetric_difference(remediation_products))
-    check = len(sym_diff) > 0 and rule_products and remediation_products
-    if check:
+    if check := len(sym_diff) > 0 and rule_products and remediation_products:
         return "\trule_id:%s has a different prodtypes between YAML and %s remediations: %s" % \
                (rule_id, r_type, ','.join(sym_diff))
 

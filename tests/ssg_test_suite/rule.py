@@ -74,8 +74,7 @@ def _apply_script(rule_dir, test_env, script):
     """Run particular test script on VM and log it's output."""
     logging.debug("Applying script {0}".format(script))
     rule_name = os.path.basename(rule_dir)
-    log_file_name = os.path.join(
-        LogHelper.LOG_DIR, rule_name + ".prescripts.log")
+    log_file_name = os.path.join(LogHelper.LOG_DIR, f"{rule_name}.prescripts.log")
 
     with open(log_file_name, 'a') as log_file:
         log_file.write('##### {0} / {1} #####\n'.format(rule_name, script))
@@ -94,9 +93,7 @@ def _apply_script(rule_dir, test_env, script):
 def _get_script_context(script):
     """Return context of the script."""
     result = re.search(r'.*\.([^.]*)\.[^.]*$', script)
-    if result is None:
-        return None
-    return result.group(1)
+    return None if result is None else result[1]
 
 
 class RuleChecker(oscap.Checker):
@@ -120,7 +117,7 @@ class RuleChecker(oscap.Checker):
         super(RuleChecker, self).__init__(test_env)
         self._matching_rule_found = False
 
-        self.results = list()
+        self.results = []
         self._current_result = None
         self.remote_dir = ""
 
@@ -157,47 +154,48 @@ class RuleChecker(oscap.Checker):
             return True
 
         if remediation_available:
-            if not self._remediation_went_ok(runner, rule_id):
-                return False
+            return (
+                self._final_scan_went_ok(runner, rule_id)
+                if self._remediation_went_ok(runner, rule_id)
+                else False
+            )
 
-            return self._final_scan_went_ok(runner, rule_id)
-        else:
-            msg = ("No remediation is available for rule '{}'."
-                   .format(rule_id))
-            logging.warning(msg)
-            return False
+        msg = f"No remediation is available for rule '{rule_id}'."
+        logging.warning(msg)
+        return False
 
     def _initial_scan_went_ok(self, runner, rule_id, context):
         success = runner.run_stage_with_context("initial", context)
         self._current_result.record_stage_result("initial_scan", success)
         if not success:
-            msg = ("The initial scan failed for rule '{}'."
-                   .format(rule_id))
+            msg = f"The initial scan failed for rule '{rule_id}'."
             logging.error(msg)
         return success
 
     def _is_remediation_available(self, rule):
-        if xml_operations.find_fix_in_benchmark(
-                self.datastream, self.benchmark_id, rule.id, self.remediate_using) is None:
-            return False
-        else:
-            return True
+        return (
+            xml_operations.find_fix_in_benchmark(
+                self.datastream, self.benchmark_id, rule.id, self.remediate_using
+            )
+            is not None
+        )
 
 
     def _get_available_remediations(self, scenario):
-        is_supported = set(['all'])
-        is_supported.add(
-            oscap.REMEDIATION_RUNNER_TO_REMEDIATION_MEANS[self.remediate_using])
-        supported_and_available_remediations = set(
-            scenario.script_params['remediation']).intersection(is_supported)
-        return supported_and_available_remediations
+        is_supported = {
+            'all',
+            oscap.REMEDIATION_RUNNER_TO_REMEDIATION_MEANS[self.remediate_using],
+        }
+
+        return set(scenario.script_params['remediation']).intersection(
+            is_supported
+        )
 
     def _remediation_went_ok(self, runner, rule_id):
         success = runner.run_stage_with_context('remediation', 'fixed')
         self._current_result.record_stage_result("remediation", success)
         if not success:
-            msg = ("The remediation failed for rule '{}'."
-                   .format(rule_id))
+            msg = f"The remediation failed for rule '{rule_id}'."
             logging.error(msg)
 
         return success
@@ -206,28 +204,30 @@ class RuleChecker(oscap.Checker):
         success = runner.run_stage_with_context('final', 'pass')
         self._current_result.record_stage_result("final_scan", success)
         if not success:
-            msg = ("The check after remediation failed for rule '{}'."
-                   .format(rule_id))
+            msg = f"The check after remediation failed for rule '{rule_id}'."
             logging.error(msg)
         return success
 
     def _rule_should_be_tested(self, rule, rules_to_be_tested):
         if 'ALL' in rules_to_be_tested:
             # don't select rules that are not present in benchmark
-            if not xml_operations.find_rule_in_benchmark(
-                    self.datastream, self.benchmark_id, rule.id):
-                return False
-            return True
-        else:
-            for rule_to_be_tested in rules_to_be_tested:
+            return bool(
+                xml_operations.find_rule_in_benchmark(
+                    self.datastream, self.benchmark_id, rule.id
+                )
+            )
+
+        for rule_to_be_tested in rules_to_be_tested:
                 # we check for a substring
-                if rule_to_be_tested.startswith(OSCAP_RULE):
-                    pattern = rule_to_be_tested
-                else:
-                    pattern = OSCAP_RULE + rule_to_be_tested
-                if fnmatch.fnmatch(rule.id, pattern):
-                    return True
-            return False
+            pattern = (
+                rule_to_be_tested
+                if rule_to_be_tested.startswith(OSCAP_RULE)
+                else OSCAP_RULE + rule_to_be_tested
+            )
+
+            if fnmatch.fnmatch(rule.id, pattern):
+                return True
+        return False
 
     def _ensure_package_present_for_all_scenarios(self, scenarios_by_rule):
         packages_required = set()
@@ -276,7 +276,7 @@ class RuleChecker(oscap.Checker):
             return
         self._matching_rule_found = True
 
-        scenarios_by_rule = dict()
+        scenarios_by_rule = {}
         for rule in rules_to_test:
             rule_scenarios = self._get_scenarios(
                 rule.directory, rule.files, self.scenarios_regex,
@@ -317,7 +317,7 @@ class RuleChecker(oscap.Checker):
                                   re.MULTILINE)
                 if found is None:
                     continue
-                splitted = found.group(1).split(',')
+                splitted = found[1].split(',')
                 params[parameter] = [value.strip() for value in splitted]
         return params
 
@@ -331,11 +331,13 @@ class RuleChecker(oscap.Checker):
 
         scenarios = []
         for script in scripts:
-            if scenarios_regex is not None:
-                if scenarios_pattern.match(script) is None:
-                    logging.debug("Skipping script %s - it did not match "
-                                  "--scenarios regex" % script)
-                    continue
+            if (
+                scenarios_regex is not None
+                and scenarios_pattern.match(script) is None
+            ):
+                logging.debug("Skipping script %s - it did not match "
+                              "--scenarios regex" % script)
+                continue
             script_context = _get_script_context(script)
             if script_context is not None:
                 script_params = self._parse_parameters(os.path.join(rule_dir, script))
@@ -343,7 +345,7 @@ class RuleChecker(oscap.Checker):
                 if common.matches_platform(script_params["platform"], benchmark_cpes):
                     scenarios += [Scenario(script, script_context, script_params)]
                 else:
-                    logging.warning("Script %s is not applicable on given platform" % script)
+                    logging.warning(f"Script {script} is not applicable on given platform")
 
         return scenarios
 

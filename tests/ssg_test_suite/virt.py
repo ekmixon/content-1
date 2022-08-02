@@ -9,11 +9,7 @@ import sys
 import socket
 
 # Needed for compatibility as there is no TimeoutError in python2.
-if sys.version_info[0] < 3:
-    TimeoutException = socket.timeout
-else:
-    TimeoutException = TimeoutError
-
+TimeoutException = socket.timeout if sys.version_info[0] < 3 else TimeoutError
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
@@ -117,9 +113,10 @@ def determine_ip(domain):
     # wait for machine until it gets to RUNNING state,
     # because it isn't possible to determine IP in e.g. PAUSED state
     must_end = time.time() + 120  # wait max. 2 minutes
-    while time.time() < must_end:
-        if domain.state()[0] == libvirt.VIR_DOMAIN_RUNNING:
-            break
+    while (
+        time.time() < must_end
+        and domain.state()[0] != libvirt.VIR_DOMAIN_RUNNING
+    ):
         time.sleep(1)
 
     domain_xml = ET.fromstring(domain.XMLDesc())
@@ -133,15 +130,15 @@ def determine_ip(domain):
                             libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT,
                             0)
     except libvirt.libvirtError:
-        # guest agent is not connected properly
-        # let's try to reattach the guest-agent device
-        guest_agent_xml_string = None
         domain_xml = ET.fromstring(domain.XMLDesc())
-        for guest_agent_node in domain_xml.iter('channel'):
-            if guest_agent_node.attrib['type'] == 'unix':
-                guest_agent_xml_string = ET.tostring(guest_agent_node, encoding='unicode')
-                break
-        if guest_agent_xml_string:
+        if guest_agent_xml_string := next(
+            (
+                ET.tostring(guest_agent_node, encoding='unicode')
+                for guest_agent_node in domain_xml.iter('channel')
+                if guest_agent_node.attrib['type'] == 'unix'
+            ),
+            None,
+        ):
             domain.detachDevice(guest_agent_xml_string)
         domain.attachDevice(GUEST_AGENT_XML)
         time.sleep(1)

@@ -62,7 +62,9 @@ def main():
     # parse new file(string) as an ssg.xml.ElementTree, so we can reorder elements
     # appropriately
     corrected_tree = ssg.xml.ElementTree.fromstring(
-        ("%s%s%s" % (header, body, footer)).encode("utf-8"))
+        f"{header}{body}{footer}".encode("utf-8")
+    )
+
     tree = ssg.build_ovals.finalize_affected_platforms(corrected_tree, env_yaml)
     definitions = ssg.xml.ElementTree.Element("{%s}definitions" % oval_ns)
     tests = ssg.xml.ElementTree.Element("{%s}tests" % oval_ns)
@@ -87,7 +89,7 @@ def main():
             sys.stderr.write("Warning: Unknown element '%s'\n"
                              % (childnode.tag))
 
-    root = ssg.xml.ElementTree.fromstring(("%s%s" % (header, footer)).encode("utf-8"))
+    root = ssg.xml.ElementTree.fromstring(f"{header}{footer}".encode("utf-8"))
     root.append(definitions)
     root.append(tests)
     root.append(objects)

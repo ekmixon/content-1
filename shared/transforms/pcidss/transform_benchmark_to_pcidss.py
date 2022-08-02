@@ -38,7 +38,7 @@ REMOTE_URL = "https://www.pcisecuritystandards.org/documents/PCI_DSS_v3-1.pdf"
 
 def construct_xccdf_group(id_, desc, children, rules, rule_usage_map):
     ret = ElementTree.Element("{%s}Group" % (XCCDF_NAMESPACE))
-    ret.set("id", ssg.constants.OSCAP_GROUP_PCIDSS + "-%s" % (id_))
+    ret.set("id", ssg.constants.OSCAP_GROUP_PCIDSS + f"-{id_}")
     ret.set("selected", "true")
     title = ElementTree.Element("{%s}title" % (XCCDF_NAMESPACE))
     title.text = id_
@@ -48,12 +48,10 @@ def construct_xccdf_group(id_, desc, children, rules, rule_usage_map):
     ret.append(description)
 
     for rule in rules:
-        pci_dss_req_related = False
-        for ref in rule.findall("./{%s}reference" % (XCCDF_NAMESPACE)):
-            if ref.get("href") == REMOTE_URL and \
-                    ref.text == "Req-" + id_:
-                pci_dss_req_related = True
-                break
+        pci_dss_req_related = any(
+            ref.get("href") == REMOTE_URL and ref.text == f"Req-{id_}"
+            for ref in rule.findall("./{%s}reference" % (XCCDF_NAMESPACE))
+        )
 
         if pci_dss_req_related:
             suffix = ""
@@ -92,10 +90,7 @@ def main():
 
     benchmark = ElementTree.parse(sys.argv[2])
 
-    rules = []
-    for rule in \
-            benchmark.findall(".//{%s}Rule" % (XCCDF_NAMESPACE)):
-        rules.append(rule)
+    rules = list(benchmark.findall(".//{%s}Rule" % (XCCDF_NAMESPACE)))
     rule_usage_map = {}
 
     # only PCI-DSS related rules in that list, to speed-up processing
@@ -106,18 +101,14 @@ def main():
                 filtered_rules.append(rule)
                 break
 
-    values = []
-    for value in \
-            benchmark.findall(".//{%s}Value" % (XCCDF_NAMESPACE)):
-        values.append(value)
-
+    values = list(benchmark.findall(".//{%s}Value" % (XCCDF_NAMESPACE)))
     # decide on usage of .iter or .getiterator method of elementtree class.
     # getiterator is deprecated in Python 3.9, but iter is not available in
     # older versions
-    if getattr(benchmark, "iter", None) == None:
-        parent_map = dict((c, p) for p in benchmark.getiterator() for c in p)
+    if getattr(benchmark, "iter", None) is None:
+        parent_map = {c: p for p in benchmark.getiterator() for c in p}
     else:
-        parent_map = dict((c, p) for p in benchmark.iter() for c in p)
+        parent_map = {c: p for p in benchmark.iter() for c in p}
     for rule in \
             benchmark.findall(".//{%s}Rule" % (XCCDF_NAMESPACE)):
         parent_map[rule].remove(rule)
@@ -135,7 +126,7 @@ def main():
                                   filtered_rules, rule_usage_map)
         root_element.append(element)
 
-    if len(values) > 0:
+    if values:
         group = ElementTree.Element("{%s}Group" % (XCCDF_NAMESPACE))
         group.set("id", ssg.constants.OSCAP_GROUP_VAL)
         group.set("selected", "true")
@@ -170,7 +161,7 @@ def main():
                     )
                     sys.exit(1)
 
-    if len(unused_rules) > 0:
+    if unused_rules:
         group = ElementTree.Element("{%s}Group" % (XCCDF_NAMESPACE))
         group.set("id", ssg.constants.OSCAP_GROUP_NON_PCI)
         group.set("selected", "true")

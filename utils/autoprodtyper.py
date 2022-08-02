@@ -70,11 +70,14 @@ def main():
     if args.profiles_root:
         profiles_root = args.profiles_root
 
-    profile_filename = args.profile + ".profile"
+    profile_filename = f"{args.profile}.profile"
     profile_path = os.path.join(profiles_root, profile_filename)
     if not os.path.exists(profile_path):
-        msg = "Unknown profile {0}: check profile, --profiles-root, and try again. "
-        msg += "Note that profiles should not include '.profile' suffix."
+        msg = (
+            "Unknown profile {0}: check profile, --profiles-root, and try again. "
+            + "Note that profiles should not include '.profile' suffix."
+        )
+
         msg = msg.format(args.profile)
         raise ValueError(msg)
 

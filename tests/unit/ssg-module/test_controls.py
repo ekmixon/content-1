@@ -149,7 +149,7 @@ def profile_resolution(cls, profile_low):
 
     controls_manager = ssg.controls.ControlsManager(controls_dir, env_yaml)
     controls_manager.load()
-    low_profile_path = os.path.join(profiles_dir, profile_low + ".profile")
+    low_profile_path = os.path.join(profiles_dir, f"{profile_low}.profile")
     profile = cls.from_yaml(low_profile_path)
     all_profiles = {"abcd-low": profile}
     profile.resolve(all_profiles, controls_manager=controls_manager)
@@ -178,9 +178,9 @@ def profile_resolution_extends(cls, profile_low, profile_high):
     controls_manager = ssg.controls.ControlsManager(controls_dir, env_yaml)
     controls_manager.load()
 
-    low_profile_path = os.path.join(profiles_dir, profile_low + ".profile")
+    low_profile_path = os.path.join(profiles_dir, f"{profile_low}.profile")
     low_profile = cls.from_yaml(low_profile_path)
-    high_profile_path = os.path.join(profiles_dir, profile_high + ".profile")
+    high_profile_path = os.path.join(profiles_dir, f"{profile_high}.profile")
     high_profile = cls.from_yaml(high_profile_path)
     all_profiles = {profile_low: low_profile, profile_high: high_profile}
     high_profile.resolve(all_profiles, controls_manager=controls_manager)
@@ -213,7 +213,7 @@ def profile_resolution_all(cls, profile_all):
 
     controls_manager = ssg.controls.ControlsManager(controls_dir, env_yaml)
     controls_manager.load()
-    profile_path = os.path.join(profiles_dir, profile_all + ".profile")
+    profile_path = os.path.join(profiles_dir, f"{profile_all}.profile")
     profile = cls.from_yaml(profile_path)
     all_profiles = {profile_all: profile}
     profile.resolve(all_profiles, controls_manager=controls_manager)

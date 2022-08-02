@@ -46,8 +46,7 @@ def parse_args():
 
 def get_benchmarks(root):
     for component in root.findall("ds:component", ns):
-        for benchmark in component.findall("xccdf:Benchmark", ns):
-            yield benchmark
+        yield from component.findall("xccdf:Benchmark", ns)
 
 
 def find_benchmark(root, id_):
@@ -60,14 +59,12 @@ def find_benchmark(root, id_):
 
 def find_oval_definition(oval_doc, def_id):
     definitions = oval_doc.find("oval:definitions", ns)
-    definition = definitions.find("oval:definition[@id='%s']" % (def_id), ns)
-    return definition
+    return definitions.find("oval:definition[@id='%s']" % (def_id), ns)
 
 
 def find_oval_test(oval_doc, test_id):
     tests = oval_doc.find("oval:tests", ns)
-    test = tests.find("*[@id='%s']" % (test_id))
-    return test
+    return tests.find("*[@id='%s']" % (test_id))
 
 
 def definition_to_elements(definition):
@@ -88,7 +85,7 @@ def definition_to_elements(definition):
 
 def print_offending_elements(elements, sign):
     for thing, atrribute in elements:
-        print("%s %s %s" % (sign, thing, atrribute))
+        print(f"{sign} {thing} {atrribute}")
 
 
 def compare_oval_definitions(
@@ -104,7 +101,7 @@ def compare_oval_definitions(
                 new_els.remove(y)
                 break
     if old_els or new_els:
-        print("OVAL definition %s differs:" % (old_oval_def_id))
+        print(f"OVAL definition {old_oval_def_id} differs:")
         print("--- old datastream")
         print("+++ new datastream")
         print_offending_elements(old_els, "-")
@@ -122,7 +119,7 @@ def compare_ovals(
         print("New datastream adds OVAL for rule '%s'." % (rule_id))
     elif (old_oval_ref is not None and new_oval_ref is None):
         print("New datastream is missing OVAL for rule '%s'." % (rule_id))
-    elif (old_oval_ref is not None and new_oval_ref is not None):
+    elif old_oval_ref is not None:
         old_check_content_ref = old_oval_ref.find(
             "xccdf:check-content-ref", ns)
         new_check_content_ref = new_oval_ref.find(
@@ -164,10 +161,15 @@ def compare_ovals(
 
 def compare_fix_texts(old_r, new_r):
     if old_r != new_r:
-        diff = "".join(difflib.unified_diff(
-            old_r.splitlines(keepends=True), new_r.splitlines(keepends=True),
-            fromfile="old datastream", tofile="new datastream"))
-        return diff
+        return "".join(
+            difflib.unified_diff(
+                old_r.splitlines(keepends=True),
+                new_r.splitlines(keepends=True),
+                fromfile="old datastream",
+                tofile="new datastream",
+            )
+        )
+
     return None
 
 
@@ -184,8 +186,7 @@ def compare_fix_elements(
     if show_diffs:
         old_fix_text = "".join(old_fix.itertext())
         new_fix_text = "".join(new_fix.itertext())
-        diff = compare_fix_texts(old_fix_text, new_fix_text)
-        if diff:
+        if diff := compare_fix_texts(old_fix_text, new_fix_text):
             print("%s remediation for rule '%s' differs:\n%s" % (
                 remediation_type, rule_id, diff))
 
@@ -201,7 +202,7 @@ def compare_remediations(old_rule, new_rule, remediation_type, show_diffs):
     elif (old_fix is not None and new_fix is None):
         print("New datastream is missing %s remediation for rule '%s'." % (
             remediation_type, rule_id))
-    elif (old_fix is not None and new_fix is not None):
+    elif old_fix is not None:
         compare_fix_elements(
             old_fix, new_fix, remediation_type, rule_id, show_diffs)
 
@@ -234,7 +235,7 @@ def process_benchmarks(
     try:
         rules_in_old_benchmark = get_rules_to_compare(old_benchmark, rule_id)
     except ValueError as e:
-        print(str(e))
+        print(e)
         return
     for old_rule in rules_in_old_benchmark:
         rule_id = old_rule.get("id")
@@ -242,21 +243,21 @@ def process_benchmarks(
             ".//xccdf:Rule[@id='%s']" % (rule_id), ns)
         if new_rule is None:
             missing_rules.append(rule_id)
-            print("%s is missing in new datastream." % (rule_id))
+            print(f"{rule_id} is missing in new datastream.")
             continue
         compare_rules(
             old_rule, new_rule, old_oval_defs, new_oval_defs, show_diffs)
 
 
 def find_all_oval_defs(root):
-    component_refs = dict()
+    component_refs = {}
     for ds in root.findall("ds:data-stream", ns):
         checks = ds.find("ds:checks", ns)
         for component_ref in checks.findall("ds:component-ref", ns):
             component_ref_href = component_ref.get("{%s}href" % (ns["xlink"]))
             component_ref_id = component_ref.get("id")
             component_refs[component_ref_href] = component_ref_id
-    uris = dict()
+    uris = {}
     for ds in root.findall("ds:data-stream", ns):
         checklists = ds.find("ds:checklists", ns)
         catalog = checklists.find(".//catalog:catalog", ns)
@@ -264,14 +265,14 @@ def find_all_oval_defs(root):
             uri_uri = uri.get("uri")
             uri_name = uri.get("name")
             uris[uri_uri] = uri_name
-    def_doc_dict = dict()
+    def_doc_dict = {}
     for component in root.findall("ds:component", ns):
         oval_def_doc = component.find("oval:oval_definitions", ns)
         if oval_def_doc is not None:
             comp_id = component.get("id")
-            comp_href = "#" + comp_id
+            comp_href = f"#{comp_id}"
             try:
-                filename = uris["#" + component_refs[comp_href]]
+                filename = uris[f"#{component_refs[comp_href]}"]
             except KeyError:
                 continue
             def_doc_dict[filename] = oval_def_doc

@@ -30,11 +30,7 @@ class LogHelper(object):
         logging.debug("Searching for viable {0}{1}".format(original_path,
                                                            suffix))
         while True:
-            if not log_number:
-                log_number_suffix = ""
-            else:
-                log_number_suffix = "-{0}".format(log_number)
-
+            log_number_suffix = "-{0}".format(log_number) if log_number else ""
             path = original_path + log_number_suffix + suffix
             if os.path.exists(path):
                 log_number += 1

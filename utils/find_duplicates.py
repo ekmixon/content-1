@@ -17,14 +17,14 @@ def recursive_globi(mask):
 
     parts = mask.split("**/")
 
-    if not len(parts) == 2:
+    if len(parts) != 2:
         raise NotImplementedError
 
     search_root = parts[0]
 
     # instead of '*' use regex '.*'
     path_mask = parts[1].replace("*", ".*")
-    re_path_mask = re.compile(path_mask + "$")
+    re_path_mask = re.compile(f"{path_mask}$")
 
     for root, dirnames, filenames in os.walk(search_root):
         dirnames.sort()
@@ -72,7 +72,7 @@ class DuplicatesFinder(object):
         return shared_normalized == specific_normalized
 
     def _print_match(self, first_filename, second_filename):
-        print("Duplicate found! {}\t=>\t{}".format(first_filename, second_filename))
+        print(f"Duplicate found! {first_filename}\t=>\t{second_filename}")
 
     def search(self):
         """

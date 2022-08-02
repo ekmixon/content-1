@@ -59,7 +59,7 @@ def test_ansible_class():
         os.path.join(DATADIR, "ansible.yml"), os.path.join(DATADIR, "file_owner_grub2_cfg.yml")
     )
 
-    remediation.parse_from_file_with_jinja(dict())
+    remediation.parse_from_file_with_jinja({})
 
     assert remediation.metadata["reboot"] == 'false'
     assert remediation.metadata["strategy"] == 'configure'

@@ -199,15 +199,12 @@ def parse_args():
 
 
 def get_logging_dir(options):
-    body = 'custom'
-    if 'ALL' in options.target:
-        body = 'ALL'
-
-    generic_logdir_stem = "{0}-{1}".format(options.subparser_name, body)
-
+    body = 'ALL' if 'ALL' in options.target else 'custom'
     if options.logdir is None:
 
         date_string = time.strftime('%Y-%m-%d-%H%M', time.localtime())
+        generic_logdir_stem = "{0}-{1}".format(options.subparser_name, body)
+
         logging_dir = os.path.join(
             os.getcwd(), 'logs', '{0}-{1}'.format(
                 generic_logdir_stem, date_string))
@@ -220,7 +217,7 @@ def get_logging_dir(options):
 
 def _print_available_benchmarks(xccdf_ids, n_xccdf_ids):
     logging.info("The DataStream contains {0} Benchmarks".format(n_xccdf_ids))
-    for i in range(0, n_xccdf_ids):
+    for i in range(n_xccdf_ids):
         logging.info("{0} - {1}".format(i, xccdf_ids[i]))
 
 
@@ -253,8 +250,7 @@ def get_datastreams():
     ds_glob = "ssg-*-ds.xml"
     build_dir_path = [os.path.dirname(__file__) or ".", "..", "build"]
     glob_pattern = os.path.sep.join(build_dir_path + [ds_glob])
-    datastreams = [os.path.normpath(p) for p in glob(glob_pattern)]
-    return datastreams
+    return [os.path.normpath(p) for p in glob(glob_pattern)]
 
 
 def get_unique_datastream():
@@ -264,7 +260,7 @@ def get_unique_datastream():
     msg = ("Autodetection of the datastream file is possible only when there is "
            "a single one in the build dir, but")
     if not datastreams:
-        raise RuntimeError(msg + " there is none.")
+        raise RuntimeError(f"{msg} there is none.")
     raise RuntimeError(
         msg + " there are {0} of them. Use the --datastream option to select "
         "e.g. {1}".format(len(datastreams), datastreams))
@@ -294,7 +290,7 @@ def normalize_passed_arguments(options):
             options.datastream, options.xccdf_id)
         options.benchmark_id = bench_id
     except RuntimeError as exc:
-        msg = "Error inferring benchmark ID from component refId: {}".format(str(exc))
+        msg = f"Error inferring benchmark ID from component refId: {str(exc)}"
         raise RuntimeError(msg)
 
     if options.docker:
@@ -313,7 +309,7 @@ def normalize_passed_arguments(options):
         hypervisor, domain_name = options.libvirt
         # Possible hypervisor spec we have to catch: qemu+unix:///session
         if not re.match(r"[\w\+]+:///", hypervisor):
-            hypervisor = "qemu:///" + hypervisor
+            hypervisor = f"qemu:///{hypervisor}"
         options.test_env = ssg_test_suite.test_env.VMTestEnv(
             options.scanning_mode, hypervisor, domain_name)
         logging.info(
@@ -326,7 +322,7 @@ def normalize_passed_arguments(options):
         )
         options.benchmark_cpes = benchmark_cpes
     except RuntimeError as exc:
-        msg = "Error inferring platform from benchmark: {}".format(str(exc))
+        msg = f"Error inferring platform from benchmark: {str(exc)}"
         raise RuntimeError(msg)
 
 
@@ -343,7 +339,7 @@ def main():
     try:
         normalize_passed_arguments(options)
     except RuntimeError as exc:
-        msg = "Error occurred during options normalization: {}".format(str(exc))
+        msg = f"Error occurred during options normalization: {str(exc)}"
         logging.error(msg)
         sys.exit(1)
     # logging dir needs to be created based on other options

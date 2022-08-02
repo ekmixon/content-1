@@ -53,9 +53,7 @@ def compare_sets(reference, sample):
 
 
 def report_comparison(name, result):
-    msg = ""
-    if not result.empty:
-        msg = describe_change(result, name)
+    msg = "" if result.empty else describe_change(result, name)
     print(msg, file=sys.stderr)
 
 
@@ -92,16 +90,15 @@ def get_profile_name_from_reference_filename(fname):
     path_components = fname.split(os.path.sep)
     product_id = path_components[-2]
     profile_id = os.path.splitext(path_components[-1])[0]
-    name = "{product_id}'s {profile_id}".format(
-        product_id=product_id, profile_id=profile_id)
-    return name
+    return "{product_id}'s {profile_id}".format(
+        product_id=product_id, profile_id=profile_id
+    )
 
 
 def get_reference_vs_built_difference(reference_fname, built_fname):
     ref_selections = get_selections_key_from_yaml(reference_fname)
     built_selections = get_selections_key_from_yaml(built_fname)
-    difference = compare_sets(ref_selections, built_selections)
-    return difference
+    return compare_sets(ref_selections, built_selections)
 
 
 def main():

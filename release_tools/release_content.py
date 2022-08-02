@@ -35,8 +35,7 @@ def parse_version(cmakelists_path):
         cmakelists_content = cmakelists_stream.read()
 
         matches = re.findall(regex, cmakelists_content)
-    version = {v_name.lower(): v_value for v_name, v_value in matches}
-    return version
+    return {v_name.lower(): v_value for v_name, v_value in matches}
 
 
 def get_version_string(d):
@@ -50,9 +49,7 @@ def get_next_version_string(d):
 
 def get_gh_repo(env, args):
     gh = github.Github(env['github_token'])
-    gh_repo = content_gh.get_repo(gh, args.owner, args.repo)
-
-    return gh_repo
+    return content_gh.get_repo(gh, args.owner, args.repo)
 
 
 def get_jenkins_ci(env):
@@ -65,8 +62,7 @@ def check_release(env, args):
     '''
 
     gh_repo = get_gh_repo(env, args)
-    release_exists = content_gh.check_release_exists(gh_repo, args)
-    if release_exists:
+    if release_exists := content_gh.check_release_exists(gh_repo, args):
         print(f"Version {args.version} was released already, "
               "bump the version in the CMakeLists.txt file before releasing.")
         return
@@ -87,8 +83,7 @@ def build_release(env, args):
     build_parameters = [('GIT_BRANCH', f"stabilization-v{args.version}")]
 
     jenkins_ci = get_jenkins_ci(env)
-    all_built = jenkins_ci.build_jobs_for_release(build_parameters)
-    if all_built:
+    if all_built := jenkins_ci.build_jobs_for_release(build_parameters):
         print(":: You can continue to next step and generate the release notes, run "
               "'python3 release_content.py release_notes'")
     else:
@@ -127,7 +122,7 @@ def prep_next_release(env, args):
     jenkins_ci = get_jenkins_ci(env)
     jenkins_ci.forget_release_builds()
 
-    print(f"Creating commit for version bump")
+    print("Creating commit for version bump")
     local_repo = git.Repo('../')
 
     bump_branch = local_repo.create_head(

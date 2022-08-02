@@ -54,12 +54,9 @@ yaml.add_representer(collections.OrderedDict, dict_representer)
 yaml.add_constructor(_mapping_tag, dict_constructor)
 # End arcaduf gist
 
-PRODUCT_WHITELIST = set([
-    "rhel7",
-    "rhel8",
-])
+PRODUCT_WHITELIST = {"rhel7", "rhel8"}
 
-PROFILE_WHITELIST = set([
+PROFILE_WHITELIST = {
     "anssi_nt28_enhanced",
     "anssi_nt28_high",
     "anssi_nt28_intermediary",
@@ -79,7 +76,8 @@ PROFILE_WHITELIST = set([
     "stig",
     "rhvh-stig",
     "rhvh-vpp",
-])
+}
+
 
 
 ORGANIZATION_NAME = "RedHatOfficial"
@@ -97,7 +95,7 @@ README_TEMPLATE_PATH = os.path.join(
 
 def create_empty_repositories(github_new_repos, github_org):
     for github_new_repo in github_new_repos:
-        print("Creating new Github repository: %s" % github_new_repo)
+        print(f"Creating new Github repository: {github_new_repo}")
         github_org.create_repo(
             github_new_repo,
             description="Role generated from ComplianceAsCode Project",
@@ -109,9 +107,8 @@ def create_empty_repositories(github_new_repos, github_org):
 
 
 def clone_and_init_repository(parent_dir, organization, repo):
-    os.system(
-        "git clone git@github.com:%s/%s" % (organization, repo))
-    os.system("ansible-galaxy init " + repo + " --force")
+    os.system(f"git clone git@github.com:{organization}/{repo}")
+    os.system(f"ansible-galaxy init {repo} --force")
     os.chdir(repo)
     try:
         os.system('git add .')
@@ -123,7 +120,7 @@ def clone_and_init_repository(parent_dir, organization, repo):
 
 
 def update_repo_release(github, repo):
-    repo_tags = [tag for tag in repo.get_tags()]
+    repo_tags = list(repo.get_tags())
     try:
         (majv, minv, rel) = repo_tags[0].name.split(".")
         rel = int(rel) + 1
@@ -132,7 +129,7 @@ def update_repo_release(github, repo):
         cac_tags = [tag for tag in cac.get_tags() if tag.name != "v0.5.0-InitialDraft"]
         (majv, minv, rel) = cac_tags[0].name.strip("v").split(".")
 
-    new_tag = ("%s.%s.%s" % (majv, minv, rel))
+    new_tag = f"{majv}.{minv}.{rel}"
     commits = repo.get_commits()
     print("Tagging new release '%s' for repo '%s'" % (new_tag, repo.name))
     repo.create_git_tag_and_release(new_tag, '', '', '', commits[0].sha, 'commit')
@@ -150,11 +147,11 @@ class PlaybookToRoleConverter():
         # is in role metadata
         if "pre_tasks" in self._playbook[0]:
             pre_tasks_data = self._playbook[0]["pre_tasks"]
-            if len(pre_tasks_data) == 1 and \
-                    pre_tasks_data[0]["name"] == \
-                    ssg.ansible.ansible_version_requirement_pre_task_name:
-                pass
-            else:
+            if (
+                len(pre_tasks_data) != 1
+                or pre_tasks_data[0]["name"]
+                != ssg.ansible.ansible_version_requirement_pre_task_name
+            ):
                 sys.stderr.write(
                     "%s contains pre_tasks other than the version check. "
                     "pre_tasks are not supported for ansible roles and "
@@ -165,7 +162,7 @@ class PlaybookToRoleConverter():
     def name(self):
         root, _ = os.path.splitext(os.path.basename(self._local_playbook_filename))
         product, _, profile = root.split("-", 2)
-        return "%s_%s" % (product, profile.replace("-", "_").lower())
+        return f'{product}_{profile.replace("-", "_").lower()}'
 
     @property
     @memoize
@@ -227,11 +224,15 @@ class PlaybookToRoleConverter():
     @memoize
     def title(self):
         try:
-            title = re.search(r'Profile Title:\s+(.+)$', self._description, re.MULTILINE).group(1)
+            title = re.search(
+                r'Profile Title:\s+(.+)$', self._description, re.MULTILINE
+            )[1]
+
             return '"' + title + '"'
         except AttributeError:
-            return re.search(r'Ansible Playbook for\s+(.+)$', self._description, re.MULTILINE) \
-                     .group(1)
+            return re.search(
+                r'Ansible Playbook for\s+(.+)$', self._description, re.MULTILINE
+            )[1]
 
     @property
     @memoize
@@ -260,9 +261,7 @@ class PlaybookToRoleConverter():
         # Check to see if this is RHEL product
         if platform in PRODUCT_WHITELIST:
             # For RHEL, we can get what version
-            if 'rhel' in platform:
-                return platform[len(platform)-1]
-            return "7\n    - 8"
+            return platform[len(platform)-1] if 'rhel' in platform else "7\n    - 8"
         return "TBD"
 
     @property
@@ -290,8 +289,9 @@ class PlaybookToRoleConverter():
 
     @property
     def _update_galaxy_tags(self):
-        galaxy_tags = {}
-        # These are the default tags that all roles share
+        prod = self.product
+        prof = self.profile
+
         tags = [
             "system",
             "hardening",
@@ -303,12 +303,8 @@ class PlaybookToRoleConverter():
             "complianceascode",
             "redhatofficial",
             "redhat",
+            *(prod, prof.replace("_", "")),
         ]
-        prod = self.product
-        prof = self.profile
-
-        tags.append(prod)
-        tags.append(prof.replace("_", ""))
 
         if prof == 'stig':
             tags.append("disa")
@@ -316,8 +312,7 @@ class PlaybookToRoleConverter():
         if 'anssi' in prof:
             tags.append("anssi")
 
-        galaxy_tags['galaxy_tags'] = tags
-        return galaxy_tags
+        return {'galaxy_tags': tags}
 
     def _tag_is_valid_variable(self, tag):
         return '-' not in tag and tag != 'always'
@@ -378,7 +373,10 @@ class PlaybookToRoleConverter():
         return ("%s%s%s" % ("\n".join(header), default_vars_local_content, "\n".join(lines)))
 
     def save_to_disk(self, directory):
-        print("Converting Ansible Playbook {} to Ansible Role {}".format(self._local_playbook_filename, os.path.join(directory, self.name)))
+        print(
+            f"Converting Ansible Playbook {self._local_playbook_filename} to Ansible Role {os.path.join(directory, self.name)}"
+        )
+
         for filename in self.PRODUCED_FILES:
             abs_path = os.path.join(directory, self.name, filename)
             ssg.utils.mkdir_p(os.path.dirname(abs_path))
@@ -391,8 +389,7 @@ class RoleGithubUpdater(object):
         self.role = PlaybookToRoleConverter(local_playbook_filename)
 
     def _local_content(self, filepath):
-        new_content = self.role.file(filepath)
-        return new_content
+        return self.role.file(filepath)
 
     def _remote_content(self, filepath):
         remote = self.remote_repo.get_contents(filepath)
@@ -406,16 +403,18 @@ class RoleGithubUpdater(object):
         if self._local_content(filepath) != remote_content:
             self.remote_repo.update_file(
                 filepath,
-                "Updated " + filepath,
+                f"Updated {filepath}",
                 self._local_content(filepath),
                 sha,
                 author=InputGitAuthor(
-                    GIT_COMMIT_AUTHOR_NAME, GIT_COMMIT_AUTHOR_EMAIL)
+                    GIT_COMMIT_AUTHOR_NAME, GIT_COMMIT_AUTHOR_EMAIL
+                ),
             )
-            print("Updating %s in %s" % (filepath, self.remote_repo.name))
+
+            print(f"Updating {filepath} in {self.remote_repo.name}")
 
     def update_repository(self):
-        print("Processing %s..." % self.remote_repo.name)
+        print(f"Processing {self.remote_repo.name}...")
 
         for path in PlaybookToRoleConverter.PRODUCED_FILES:
             self._update_content_if_needed(path)
@@ -476,14 +475,14 @@ def locally_clone_and_init_repositories(organization, repo_list):
 
 def select_roles_to_upload(product_whitelist, profile_whitelist,
                            build_playbooks_dir):
-    selected_roles = dict()
+    selected_roles = {}
     for filename in sorted(os.listdir(build_playbooks_dir)):
         root, ext = os.path.splitext(filename)
         if ext == ".yml":
             # the format is product-playbook-profile.yml
             product, _, profile = root.split("-", 2)
             if product in product_whitelist and profile in profile_whitelist:
-                role_name = "ansible-role-%s-%s" % (product, profile)
+                role_name = f"ansible-role-{product}-{profile}"
                 selected_roles[role_name] = (product, profile)
     return selected_roles
 
@@ -495,9 +494,11 @@ def main():
     profile_whitelist = set(PROFILE_WHITELIST)
 
     potential_roles = {
-        ("ansible-role-%s-%s" % (product, profile))
-        for product in product_whitelist for profile in profile_whitelist
+        f"ansible-role-{product}-{profile}"
+        for product in product_whitelist
+        for profile in profile_whitelist
     }
+
 
     if args.product:
         product_whitelist &= set(args.product)
@@ -527,9 +528,12 @@ def main():
         github_org = github.get_organization(args.organization)
         github_repositories = [repo.name for repo in github_org.get_repos()]
 
-        # Create empty repositories
-        github_new_repos = sorted(list(set(map(str.lower, selected_roles.keys())) - set(map(str.lower, github_repositories))))
-        if github_new_repos:
+        if github_new_repos := sorted(
+            list(
+                set(map(str.lower, selected_roles.keys()))
+                - set(map(str.lower, github_repositories))
+            )
+        ):
             create_empty_repositories(github_new_repos, github_org)
 
             locally_clone_and_init_repositories(args.organization, github_new_repos)

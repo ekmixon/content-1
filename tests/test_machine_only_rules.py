@@ -29,12 +29,12 @@ def main():
 
 def check_product(build_dir, product, rules_dirs):
     input_groups, input_rules = scan_rules_groups(rules_dirs, False)
-    ds_path = os.path.join(build_dir, "ssg-" + product + "-ds.xml")
-    if not check_ds(ds_path, "Group", input_groups):
-        return False
-    if not check_ds(ds_path, "Rule", input_rules):
-        return False
-    return True
+    ds_path = os.path.join(build_dir, f"ssg-{product}-ds.xml")
+    return (
+        bool(check_ds(ds_path, "Rule", input_rules))
+        if check_ds(ds_path, "Group", input_groups)
+        else False
+    )
 
 
 def check_ds(ds_path, what, input_elems):
@@ -83,8 +83,7 @@ def parse_command_line_args():
                         help="Content source directory path")
     parser.add_argument("--build_dir", required=True,
                         help="Build directory containing built datastreams")
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def check_if_machine_only(dirpath, name, is_machine_only_group):

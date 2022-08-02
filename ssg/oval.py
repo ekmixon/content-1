@@ -47,13 +47,13 @@ def append(element, newchild):
     global silent_mode
     newid = newchild.get("id")
     existing = element.find(".//*[@id='" + newid + "']")
-    if existing is not None:
-        if not silent_mode:
-            sys.stderr.write("Notification: this ID is used more than once " +
-                             "and should represent equivalent elements: " +
-                             newid + "\n")
-    else:
+    if existing is None:
         element.append(newchild)
+
+    elif not silent_mode:
+        sys.stderr.write("Notification: this ID is used more than once " +
+                         "and should represent equivalent elements: " +
+                         newid + "\n")
 
 
 def _add_elements(body, header, yaml_env):
@@ -101,8 +101,6 @@ def applicable_platforms(oval_file, oval_version_string=None):
     Returns the applicable platforms for a given oval file
     """
 
-    platforms = []
-
     if not oval_version_string:
         oval_version_string = ASSUMED_OVAL_VERSION_STRING
     header = oval_generated_header("applicable_platforms", oval_version_string, "0.0.1")
@@ -125,16 +123,13 @@ def applicable_platforms(oval_file, oval_version_string=None):
     try:
         oval_tree = ET.fromstring(header + body + footer)
     except Exception as e:
-        msg = "Error while loading " + oval_file
+        msg = f"Error while loading {oval_file}"
         print(msg, file=sys.stderr)
         raise e
 
     element_path = "./{%s}def-group/{%s}definition/{%s}metadata/{%s}affected/{%s}platform"
     element_ns_path = element_path % (ovalns, ovalns, ovalns, ovalns, ovalns)
-    for node in oval_tree.findall(element_ns_path):
-        platforms.append(node.text)
-
-    return platforms
+    return [node.text for node in oval_tree.findall(element_ns_path)]
 
 
 def parse_affected(oval_contents):
@@ -147,8 +142,13 @@ def parse_affected(oval_contents):
     <affected> element.
     """
 
-    start_affected = list(filter(lambda x: "<affected" in oval_contents[x],
-                                 range(0, len(oval_contents))))
+    start_affected = list(
+        filter(
+            lambda x: "<affected" in oval_contents[x],
+            range(len(oval_contents)),
+        )
+    )
+
     if len(start_affected) != 1:
         raise ValueError("OVAL file does not contain a single <affected> "
                          "element; counted %d in:\n%s\n\n" %
@@ -156,8 +156,13 @@ def parse_affected(oval_contents):
 
     start_affected = start_affected[0]
 
-    end_affected = list(filter(lambda x: "</affected" in oval_contents[x],
-                               range(0, len(oval_contents))))
+    end_affected = list(
+        filter(
+            lambda x: "</affected" in oval_contents[x],
+            range(len(oval_contents)),
+        )
+    )
+
     if len(end_affected) != 1:
         raise ValueError("Malformed OVAL file does not contain a single "
                          "closing </affected>; counted %d in:\n%s\n\n" %
@@ -205,7 +210,7 @@ def parse_affected(oval_contents):
         # Since the affected element is present but empty, the indents should
         # be two more spaces than that of the starting <affected> element.
         start_index = oval_contents[start_affected].index('<')
-        indents = oval_contents[start_affected][0:start_index]
+        indents = oval_contents[start_affected][:start_index]
         indents += "  "
     else:
         # Otherwise, grab the indents off the next line unmodified, as this is
@@ -213,7 +218,7 @@ def parse_affected(oval_contents):
         # indeed the case, as other parts of the build infrastructure will
         # validate this for us.
         start_index = oval_contents[start_affected+1].index('<')
-        indents = oval_contents[start_affected+1][0:start_index]
+        indents = oval_contents[start_affected+1][:start_index]
 
     return start_affected, end_affected, indents
 
@@ -247,12 +252,14 @@ def replace_external_vars(tree):
 def find_testfile_or_exit(testfile):
     """Find OVAL files in CWD or shared/oval and calls sys.exit if the file is not found"""
     _testfile = find_testfile(testfile)
-    if _testfile is None:
-        print("ERROR: %s does not exist! Please specify a valid OVAL file." % testfile,
-              file=sys.stderr)
-        sys.exit(1)
-    else:
+    if _testfile is not None:
         return _testfile
+    print(
+        f"ERROR: {testfile} does not exist! Please specify a valid OVAL file.",
+        file=sys.stderr,
+    )
+
+    sys.exit(1)
 
 
 def find_testfile(oval_id):
@@ -269,7 +276,7 @@ def find_testfile(oval_id):
         oval_id, _ = os.path.splitext(oval_id)
         oval_id = os.path.basename(oval_id)
 
-    candidates = [oval_id, "%s.xml" % oval_id]
+    candidates = [oval_id, f"{oval_id}.xml"]
 
     found_file = None
     for path in ['.', SHARED_OVAL, LINUX_OS_GUIDE]:
@@ -284,8 +291,7 @@ def find_testfile(oval_id):
         for rule_dir in find_rule_dirs(path):
             rule_id = get_rule_dir_id(rule_dir)
             if rule_id == oval_id:
-                ovals = get_rule_dir_ovals(rule_dir, product="shared")
-                if ovals:
+                if ovals := get_rule_dir_ovals(rule_dir, product="shared"):
                     found_file = ovals[0]
                     break
 
@@ -294,8 +300,7 @@ def find_testfile(oval_id):
 
 def read_ovaldefgroup_file(testfile, yaml_env):
     """Read oval files"""
-    body = process_file_with_macros(testfile, yaml_env)
-    return body
+    return process_file_with_macros(testfile, yaml_env)
 
 
 def get_openscap_supported_oval_version():
@@ -326,9 +331,7 @@ def parse_options():
                         action="store_true", dest="silent_mode",
                         help="Don't show any output when testing OVAL files")
     parser.add_argument("xmlfile", metavar="XMLFILE", help="OVAL XML file")
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def main():
@@ -346,7 +349,7 @@ def main():
     testfile = args.xmlfile
     header = oval_generated_header("testoval.py", oval_version, "0.0.1")
     testfile = find_testfile_or_exit(testfile)
-    yaml_env = dict()
+    yaml_env = {}
     body = read_ovaldefgroup_file(testfile, yaml_env)
 
     defname = _add_elements(body, header, yaml_env)
@@ -370,11 +373,11 @@ def main():
     os.write(ovalfile, ET.tostring(ovaltree))
     os.close(ovalfile)
 
-    cmd = ['oscap', 'oval', 'eval', '--results', fname + '-results', fname]
+    cmd = ['oscap', 'oval', 'eval', '--results', f'{fname}-results', fname]
     if not silent_mode:
-        print("Evaluating with OVAL tempfile: " + fname)
-        print("OVAL Schema Version: %s" % oval_version)
-        print("Writing results to: " + fname + "-results")
+        print(f"Evaluating with OVAL tempfile: {fname}")
+        print(f"OVAL Schema Version: {oval_version}")
+        print(f"Writing results to: {fname}-results")
         print("Running command: %s\n" % " ".join(cmd))
 
     oscap_child = subprocess.Popen(cmd, stdout=subprocess.PIPE)

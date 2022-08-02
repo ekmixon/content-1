@@ -46,7 +46,7 @@ if __name__ == "__main__":
         try:
             out_filepath = _get_output_filepath(args.outdir, filepath)
         except RuntimeError as exc:
-            print(str(exc), file=sys.stderr)
+            print(exc, file=sys.stderr)
             sys.exit(1)
 
         expanded_contents = expand_jinja(filepath)

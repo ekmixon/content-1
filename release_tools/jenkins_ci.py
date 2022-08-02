@@ -55,9 +55,9 @@ class JenkinsCI(object):
             job_result = self._get_last_build_status(job_name)
             if job_result != 'SUCCESS':
                 all_green = False
-                print("Job {} is failing, verify if it release can proceed.".format(job_name))
+                print(f"Job {job_name} is failing, verify if it release can proceed.")
             else:
-                print("Job {} is passing".format(job_name))
+                print(f"Job {job_name} is passing")
         return all_green
 
     def _trigger_build_job(self, job_name, build_parameters):
@@ -71,10 +71,7 @@ class JenkinsCI(object):
     def _get_build_status(self, job_name, build_number):
         try:
             build_info = self.server.get_build_info(job_name, build_number)
-            if build_info['building']:
-                return 'building'
-            else:
-                return 'built'
+            return 'building' if build_info['building'] else 'built'
         except jenkins.NotFoundException:
             return 'not found'
 
@@ -82,19 +79,22 @@ class JenkinsCI(object):
         queue = self.server.get_queue_info()
 
         found = False
-        for queue_item in queue:
-            if queue_item['task']['name'] == job_name:
-                return queue_item
-        return None
+        return next(
+            (
+                queue_item
+                for queue_item in queue
+                if queue_item['task']['name'] == job_name
+            ),
+            None,
+        )
 
     def query_status_of_queue_item(self, job_name):
-        queue_item = self.get_queue_item(job_name)
-        if queue_item:
+        if queue_item := self.get_queue_item(job_name):
             # build has not started yet, and is waiting in the queue
-            print("Build for {} is in the \033[33mqueue\033[m".format(job_name))
+            print(f"Build for {job_name} is in the \033[33mqueue\033[m")
             print("\t" + queue_item['why'])
         else:
-            print("Build for {} is in \033[31munknown state\033[m".format(job_name))
+            print(f"Build for {job_name} is in \033[31munknown state\033[m")
 
     # May throw jenkins.NotFoundException
     def query_status_of_build_job(self, job_name, build_number):
@@ -168,8 +168,8 @@ class JenkinsCI(object):
             if build_status == 'built':
                 self._download_job_artifact(job_name, build_number, version)
             else:
-                print("Build for {} is not fininished".format(job_name))
-                print("\tRun 'build' action to check status of {}".format(job_name))
+                print(f"Build for {job_name} is not fininished")
+                print(f"\tRun 'build' action to check status of {job_name}")
 
     def forget_release_builds(self):
         print("Forgetting release builds ids")
@@ -205,9 +205,8 @@ if __name__ == "__main__":
         all_green = jenkins_ci.check_all_green()
 
     # Builds the zip files and static docs
-    if parser.action == 'build':
-        if not jenkins_ci.build_jobs_for_release():
-            sys.exit(1)
+    if parser.action == 'build' and not jenkins_ci.build_jobs_for_release():
+        sys.exit(1)
 
     if parser.action == 'download':
         jenkins_ci.download_release_artifacts(parser.version)

@@ -61,12 +61,16 @@ def _open_yaml(stream, original_file=None, substitutions_dict={}):
             for line in lines:
                 count = count + 1
                 if re.match(r"^\s*\t+\s*", line):
-                    print("Exception while handling file: %s" % _file, file=sys.stderr)
-                    print("TabIndentationError: Line %s contains tabs instead of spaces:" % (count), file=sys.stderr)
+                    print(f"Exception while handling file: {_file}", file=sys.stderr)
+                    print(
+                        f"TabIndentationError: Line {count} contains tabs instead of spaces:",
+                        file=sys.stderr,
+                    )
+
                     print("%s\n\n" % repr(line.strip("\n")), file=sys.stderr)
                     sys.exit(1)
 
-        print("Exception while handling file: %s" % _file, file=sys.stderr)
+        print(f"Exception while handling file: {_file}", file=sys.stderr)
         raise e
 
 
@@ -78,7 +82,7 @@ def open_and_expand(yaml_file, substitutions_dict=None):
     See also: _open_yaml
     """
     if substitutions_dict is None:
-        substitutions_dict = dict()
+        substitutions_dict = {}
 
     expanded_template = process_file(yaml_file, substitutions_dict)
     try:
@@ -86,8 +90,8 @@ def open_and_expand(yaml_file, substitutions_dict=None):
     except yaml.scanner.ScannerError as e:
         print("A Jinja template expansion can mess up the indentation.")
         print("Please, check if the contents below are correctly expanded:")
-        print("Source yaml: {}".format(yaml_file))
-        print("Expanded yaml:\n{}".format(expanded_template))
+        print(f"Source yaml: {yaml_file}")
+        print(f"Expanded yaml:\n{expanded_template}")
         sys.exit(1)
 
     return yaml_contents
@@ -158,10 +162,7 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     unformatted_yaml = yaml.dump(data, None, OrderedDumper, **kwds)
     formatted_yaml = re.sub(r"[\n]+([\s]*)- name", r"\n\n\1- name", unformatted_yaml)
 
-    if stream is not None:
-        return stream.write(formatted_yaml)
-    else:
-        return formatted_yaml
+    return stream.write(formatted_yaml) if stream is not None else formatted_yaml
 
 
 def _strings_to_list(one_or_more_strings):

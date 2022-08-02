@@ -158,7 +158,7 @@ def main():
             profile1 = ssg.build_yaml.Profile.from_yaml(args.profile1)
             profile2 = ssg.build_yaml.Profile.from_yaml(args.profile2)
         except jinja2.exceptions.TemplateNotFound as e:
-            print("Error: Profile {} could not be found.".format(str(e)))
+            print(f"Error: Profile {str(e)} could not be found.")
             exit(1)
 
         subtracted_profile = profile1 - profile2
@@ -166,9 +166,9 @@ def main():
         exclusive_rules = len(subtracted_profile.get_rule_selectors())
         exclusive_vars = len(subtracted_profile.get_variable_selectors())
         if exclusive_rules > 0:
-            print("{} rules were left after subtraction.".format(exclusive_rules))
-        if  exclusive_vars > 0:
-            print("{} variables were left after subtraction.".format(exclusive_vars))
+            print(f"{exclusive_rules} rules were left after subtraction.")
+        if exclusive_vars > 0:
+            print(f"{exclusive_vars} variables were left after subtraction.")
 
         if exclusive_rules > 0 or exclusive_vars > 0:
             profile1_basename = os.path.splitext(
@@ -176,15 +176,18 @@ def main():
             profile2_basename = os.path.splitext(
                 os.path.basename(args.profile2))[0]
 
-            subtracted_profile_filename = "{}_sub_{}.profile".format(
-                profile1_basename, profile2_basename)
-            print("Creating a new profile containing the exclusive selections: {}".format(
-                subtracted_profile_filename))
+            subtracted_profile_filename = (
+                f"{profile1_basename}_sub_{profile2_basename}.profile"
+            )
 
-            subtracted_profile.title = profile1.title + " subtracted by " + profile2.title
+            print(
+                f"Creating a new profile containing the exclusive selections: {subtracted_profile_filename}"
+            )
+
+
+            subtracted_profile.title = f"{profile1.title} subtracted by {profile2.title}"
             subtracted_profile.dump_yaml(subtracted_profile_filename)
-            print("Profile {} was created successfully".format(
-                subtracted_profile_filename))
+            print(f"Profile {subtracted_profile_filename} was created successfully")
         else:
             print("Subtraction would produce an empty profile. No new profile was generated")
         exit(0)
@@ -239,19 +242,23 @@ def main():
         for profile in ret:
             bash_fixes_count = profile['rules_count'] - profile['missing_bash_fixes_count']
             for content in content_list:
-                content_file = "{}_{}.txt".format(profile['profile_id'], content)
+                content_file = f"{profile['profile_id']}_{content}.txt"
                 content_filepath = os.path.join("content", content_file)
                 count = len(profile[content])
                 if count > 0:
                     if content == "ansible_parity":
                         #custom text link for ansible parity
-                        count = link.format(content_filepath, "{} out of {} ({}%)".format(bash_fixes_count-count, bash_fixes_count, int(((bash_fixes_count-count)/bash_fixes_count)*100)))
+                        count = link.format(
+                            content_filepath,
+                            f"{bash_fixes_count - count} out of {bash_fixes_count} ({int(((bash_fixes_count-count)/bash_fixes_count)*100)}%)",
+                        )
+
                     count_href_element = link.format(content_filepath, count)
-                    profile['{}_count'.format(content)] = count_href_element
+                    profile[f'{content}_count'] = count_href_element
                     with open(os.path.join(content_path, content_file), 'w+') as f:
                         f.write('\n'.join(profile[content]))
                 else:
-                    profile['{}_count'.format(content)] = count
+                    profile[f'{content}_count'] = count
 
                 del profile[content]
             filtered_output.append(profile)

@@ -105,16 +105,10 @@ def operation_value(value):
 
 
 def entity_value(value):
-    if value is not None:
-        return '\n    entity_check: "%s"' % value
-    else:
-        return ''
+    return '\n    entity_check: "%s"' % value if value is not None else ''
 
 def check_existence_value(value):
-    if value is not None:
-        return '\n    check_existence: "%s"' % value
-    else:
-        return ''
+    return '\n    check_existence: "%s"' % value if value is not None else ''
 
 
 PROFILE_TEMPLATE = ('''documentation_complete: true
@@ -182,16 +176,12 @@ def which(program):
 def createFunc(args):
     url = args.url
     retries = 0
-    namespace_flag = ''
-    if args.namespace is not None:
-        namespace_flag = '-n ' + args.namespace
-
+    namespace_flag = f'-n {args.namespace}' if args.namespace is not None else ''
     group_path = os.path.join(PLATFORM_RULE_DIR, args.group)
-    if args.group:
-        if not os.path.isdir(group_path):
-            print("ERROR: The specified group '%s' doesn't exist in the '%s' directory" % (
-                args.group, PLATFORM_RULE_DIR))
-            return 0
+    if args.group and not os.path.isdir(group_path):
+        print("ERROR: The specified group '%s' doesn't exist in the '%s' directory" % (
+            args.group, PLATFORM_RULE_DIR))
+        return 0
 
     rule_path = os.path.join(group_path, args.rule)
     while url is None and retries < 5:
@@ -205,7 +195,7 @@ def createFunc(args):
         if len(output) > 0 and '/api' in output:
             url = output
 
-    if url == None:
+    if url is None:
         print('there was a problem finding the URL from the oc debug output. Hint: override this automatic check with --url')
         return 1
 
@@ -221,7 +211,7 @@ def createFunc(args):
                                      CHECK_TYPE=operation_value(args.regex),
                                      CHECK_EXISTENCE=check_existence_value(args.check_existence),
                                      ENTITY_CHECK=entity_value(args.match_entity)))
-    print('* Wrote ' + rule_yaml_path)
+    print(f'* Wrote {rule_yaml_path}')
     return 0
 
 
@@ -235,7 +225,7 @@ def createTestProfile(rule):
 @needs_working_cluster
 def clusterTestFunc(args):
 
-    print('* Testing rule %s in-cluster' % args.rule)
+    print(f'* Testing rule {args.rule} in-cluster')
 
     findout = subprocess.getoutput(
         "find %s -name '%s' -type d" % (PLATFORM_RULE_DIR, args.rule))
@@ -274,7 +264,7 @@ def clusterTestFunc(args):
         _, err = proc.communicate(
             input=TEST_SCAN_TEMPLATE.format(PROFILE=profile).encode())
         if proc.returncode != 0:
-            print('Error applying scan object: %s' % err)
+            print(f'Error applying scan object: {err}')
             try:
                 os.remove(PROFILE_PATH)
             except OSError:
@@ -288,7 +278,7 @@ def clusterTestFunc(args):
         ret_code, output = subprocess.getstatusoutput(
             'oc get compliancescans/test -o template="{{.status.phase}} {{.status.result}}"')
         if output is not None:
-            print('> Output from last phase check: %s' % output)
+            print(f'> Output from last phase check: {output}')
         if output.startswith('DONE'):
             scan_result = output[5:]
             break
@@ -296,7 +286,7 @@ def clusterTestFunc(args):
             break
         time.sleep(2)
 
-    if scan_result == None:
+    if scan_result is None:
         print('ERROR: Timeout waiting for scan to finish')
         return 1
 
@@ -309,20 +299,20 @@ def testFunc(args):
         print('podman is required')
         return 1
 
-    print('testing rule %s locally' % args.rule)
+    print(f'testing rule {args.rule} locally')
 
     if not args.skip_build:
         createTestProfile(args.rule)
         ret_code, out = subprocess.getstatusoutput('./build_product --datastream-only ocp4')
         if ret_code != 0:
-            print('build failed: %s' % out)
+            print(f'build failed: {out}')
             return 1
 
     # mock a passing result for the implicit ocp4 version check
-    version_dir = args.objectdir + '/apis/config.openshift.io/v1/clusteroperators'
+    version_dir = f'{args.objectdir}/apis/config.openshift.io/v1/clusteroperators'
     if not os.path.exists(version_dir):
         pathlib.Path(version_dir).mkdir(parents=True, exist_ok=True)
-        with open(version_dir + '/openshift-apiserver', 'w') as f:
+        with open(f'{version_dir}/openshift-apiserver', 'w') as f:
             f.write(MOCK_VERSION)
 
     oscap_cmd_opts = OSCAP_CMD_TEMPLATE % (args.verbosity)
@@ -339,7 +329,10 @@ def main():
     subparser = parser.add_subparsers(
         dest='subcommand', title='subcommands', help='pick one')
     create_parser = subparser.add_parser(
-        'create', help='Bootstrap the XML and YML files under %s for a new check.' % PLATFORM_RULE_DIR)
+        'create',
+        help=f'Bootstrap the XML and YML files under {PLATFORM_RULE_DIR} for a new check.',
+    )
+
     create_parser.add_argument(
         '--rule', required=True, help='The name of the rule to create. Required.')
     create_parser.add_argument(

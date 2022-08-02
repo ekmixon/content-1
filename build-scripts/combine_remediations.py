@@ -67,10 +67,10 @@ def main():
     rule_id_to_remediation_map = collect_fixes(
         product, [guide_dir] + add_content_dirs, args.fix_dirs, args.remediation_type)
 
-    fixes = dict()
+    fixes = {}
     for rule_id, fix_path in rule_id_to_remediation_map.items():
         remediation_obj = remediation_cls(fix_path)
-        rule_path = os.path.join(args.resolved_rules_dir, rule_id + ".yml")
+        rule_path = os.path.join(args.resolved_rules_dir, f"{rule_id}.yml")
         if os.path.isfile(rule_path):
             remediation_obj.load_rule_from(rule_path)
             # Fixes gets updated with the contents of the fix
@@ -86,7 +86,7 @@ def main():
 def collect_fixes(product, rules_dirs, fix_dirs, remediation_type):
     # path -> remediation
     # rule ID -> assoc rule
-    rule_id_to_remediation_map = dict()
+    rule_id_to_remediation_map = {}
     for fixdir in fix_dirs:
         if os.path.isdir(fixdir):
             for filename in sorted(os.listdir(fixdir)):

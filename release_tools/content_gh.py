@@ -11,7 +11,7 @@ rn_file = "release_notes.txt"
 
 def version_type(string):
     components = string.split(".")
-    shortest_component_len = min([len(x) for x in components])
+    shortest_component_len = min(len(x) for x in components)
     if len(components) != 3 or shortest_component_len == 0:
         msg = (
             "Expected version number of form X.Y.Z, where X, Y, Z are strings. "
@@ -43,10 +43,7 @@ def get_milestone(repo, name):
     matches = [m for m in milestones if m.title == name]
     assert len(matches) <= 1, \
         f"Expected to find at most one milestone {name}, found {len(matches)}"
-    if len(matches) == 0:
-        return None
-    else:
-        return matches[0]
+    return matches[0] if matches else None
 
 
 def create_new_milestone(repo, name):
@@ -82,10 +79,11 @@ def close_milestone(milestone):
 def get_closed_prs(repo, milestone):
     closed_issues = repo.get_issues(milestone=milestone, state="closed", sort="updated")
     issues_with_prs = [i for i in closed_issues if i.pull_request is not None]
-    merged_prs = [
-        i.as_pull_request() for i in issues_with_prs if i.as_pull_request().merged is True
+    return [
+        i.as_pull_request()
+        for i in issues_with_prs
+        if i.as_pull_request().merged is True
     ]
-    return merged_prs
 
 
 def generate_release_notes(repo, args):

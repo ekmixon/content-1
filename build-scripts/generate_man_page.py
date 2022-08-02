@@ -45,12 +45,11 @@ def get_product_info(ds_filepath):
         "{%s}title" % (ssg.constants.XCCDF12_NS)).text
     ds_filename = os.path.basename(ds_filepath)
     profiles = get_profiles_info(benchmark)
-    product = {
+    return {
         "title": benchmark_title,
         "ds_filename": ds_filename,
         "profiles": profiles,
     }
-    return product
 
 
 def get_profiles_info(benchmark):

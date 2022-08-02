@@ -26,7 +26,7 @@ for filepath in filepaths:
         os.symlink(os.path.join(os.path.abspath('..'), filepath), os.path.join(filepath))
     except FileExistsError as e:
         # ignore if file exists
-        print("Warning: {}".format(e))
+        print(f"Warning: {e}")
 
 # -- Project information -----------------------------------------------------
 

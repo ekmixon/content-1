@@ -36,13 +36,11 @@ class CombinedChecker(rule.RuleChecker):
         self._matching_rule_found = False
 
         self.rules_not_tested_yet = set()
-        self.results = list()
+        self.results = []
         self._current_result = None
 
     def _rule_should_be_tested(self, rule, rules_to_be_tested):
-        if rule.short_id not in rules_to_be_tested:
-            return False
-        return True
+        return rule.short_id in rules_to_be_tested
 
     def _modify_parameters(self, script, params):
         # If there is no profiles metadata in a script we will use
@@ -69,7 +67,7 @@ class CombinedChecker(rule.RuleChecker):
 
         super(CombinedChecker, self)._test_target(target)
 
-        if len(self.rules_not_tested_yet) != 0:
+        if self.rules_not_tested_yet:
             not_tested = sorted(list(self.rules_not_tested_yet))
             logging.info("The following rule(s) were not tested:")
             for rule in not_tested:

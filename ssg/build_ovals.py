@@ -28,8 +28,11 @@ def _check_is_applicable_for_product(oval_check_def, product):
     product, product_version = utils.parse_name(product)
 
     # Define general platforms
-    multi_platforms = ['<platform>multi_platform_all',
-                       '<platform>multi_platform_' + product]
+    multi_platforms = [
+        '<platform>multi_platform_all',
+        f'<platform>multi_platform_{product}',
+    ]
+
 
     # First test if OVAL check isn't for 'multi_platform_all' or
     # 'multi_platform_' + product
@@ -50,9 +53,9 @@ def _check_is_applicable_for_product(oval_check_def, product):
         if product_version is not None:
             # Some product versions have a dot in between the numbers
             # While the prodtype doesn't have the dot, the full product name does
-            if product == "ubuntu" or product == "macos":
-                product_version = product_version[:2] + "." + product_version[2:]
-            product_name += ' ' + product_version
+            if product in ["ubuntu", "macos"]:
+                product_version = f"{product_version[:2]}.{product_version[2:]}"
+            product_name += f' {product_version}'
 
         # Test if this OVAL check is for the concrete product version
         if product_name in oval_check_def:
@@ -147,35 +150,24 @@ def append(element, newchild):
     newid = newchild.get("id")
     existing = element_child_cache[element].get(newid, None)
 
-    if existing is not None:
-        # ID is identical and OVAL entities are identical
-        if oval_entities_are_identical(existing, newchild):
+    if existing is None:
+        element.append(newchild)
+        element_child_cache[element][newid] = newchild
+
+    elif oval_entities_are_identical(existing, newchild):
             # Moreover the entity is OVAL <external_variable>
-            if oval_entity_is_extvar(newchild):
-                # If OVAL entity is identical to some already included
-                # in the benchmark and represents an OVAL <external_variable>
-                # it's safe to ignore this ID (since external variables are
-                # in multiple checks just to notify 'testoval.py' helper to
-                # substitute the ID with <local_variable> entity when testing
-                # the OVAL for the rule)
-                pass
-            # Some other OVAL entity
-            else:
-                # If OVAL entity is identical, but not external_variable, the
-                # implementation should be rewritten each entity to be present
-                # just once
-                sys.stderr.write("ERROR: OVAL ID '%s' is used multiple times "
-                                 "and should represent the same elements.\n"
-                                 % (newid))
-                sys.stderr.write("Rewrite the OVAL checks. Place the identical "
-                                 "IDs into their own definition and extend "
-                                 "this definition by it.\n")
-                sys.exit(1)
-        # ID is identical, but OVAL entities are semantically difference =>
-        # report and error and exit with failure
-        # Fixes: https://github.com/OpenSCAP/scap-security-guide/issues/1275
-        else:
-            if not oval_entity_is_extvar(existing) and \
+        if not oval_entity_is_extvar(newchild):
+            # If OVAL entity is identical, but not external_variable, the
+            # implementation should be rewritten each entity to be present
+            # just once
+            sys.stderr.write("ERROR: OVAL ID '%s' is used multiple times "
+                             "and should represent the same elements.\n"
+                             % (newid))
+            sys.stderr.write("Rewrite the OVAL checks. Place the identical "
+                             "IDs into their own definition and extend "
+                             "this definition by it.\n")
+            sys.exit(1)
+    elif not oval_entity_is_extvar(existing) and \
               not oval_entity_is_extvar(newchild):
                 # This is an error scenario - since by skipping second
                 # implementation and using the first one for both references,
@@ -184,16 +176,23 @@ def append(element, newchild):
                 # See
                 #   https://github.com/OpenSCAP/scap-security-guide/issues/1275
                 # for a reproducer and what could happen in this case
-                sys.stderr.write("ERROR: it's not possible to use the " +
-                                 "same ID: %s " % newid + "for two " +
-                                 "semantically different OVAL entities:\n")
-                sys.stderr.write("First entity  %s\n" % ElementTree.tostring(existing))
-                sys.stderr.write("Second entity %s\n" % ElementTree.tostring(newchild))
-                sys.stderr.write("Use different ID for the second entity!!!\n")
-                sys.exit(1)
-    else:
-        element.append(newchild)
-        element_child_cache[element][newid] = newchild
+        sys.stderr.write(
+            (
+                (
+                    (
+                        "ERROR: it's not possible to use the "
+                        + f"same ID: {newid} "
+                    )
+                    + "for two "
+                )
+                + "semantically different OVAL entities:\n"
+            )
+        )
+
+        sys.stderr.write("First entity  %s\n" % ElementTree.tostring(existing))
+        sys.stderr.write("Second entity %s\n" % ElementTree.tostring(newchild))
+        sys.stderr.write("Use different ID for the second entity!!!\n")
+        sys.exit(1)
 
 
 def check_oval_version(oval_version):
@@ -265,9 +264,9 @@ def checks(env_yaml, yaml_path, oval_version, oval_dirs):
     product = utils.required_key(env_yaml, "product")
     included_checks_count = 0
     reversed_dirs = oval_dirs[::-1]  # earlier directory has higher priority
-    already_loaded = dict()  # filename -> oval_version
-    local_env_yaml = dict()
-    local_env_yaml.update(env_yaml)
+    already_loaded = {}
+    local_env_yaml = {}
+    local_env_yaml |= env_yaml
 
     product_dir = os.path.dirname(yaml_path)
     relative_guide_dir = utils.required_key(env_yaml, "benchmark_root")
@@ -294,7 +293,7 @@ def checks(env_yaml, yaml_path, oval_version, oval_dirs):
             # To be compatible with the later checks, use the rule_id
             # (i.e., the value of _dir) to recreate the expected filename if
             # this OVAL was in a rule directory.
-            filename = "%s.xml" % rule_id
+            filename = f"{rule_id}.xml"
 
             xml_content = process_file_with_macros(_path, local_env_yaml)
 

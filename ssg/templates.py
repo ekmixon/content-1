@@ -29,7 +29,7 @@ lang_to_ext_map = {
 }
 
 
-templates = dict()
+templates = {}
 
 
 class Template():
@@ -49,7 +49,7 @@ class Template():
             if lang not in languages:
                 raise ValueError("The template {0} declares to support the {1} language,"
                 "but this language is not supported by the content.".format(self.name, lang))
-            langfilename = lang + ".template"
+            langfilename = f"{lang}.template"
             if not os.path.exists(os.path.join(self.template_path, langfilename)):
                 raise ValueError("The template {0} declares to support the {1} language,"
                 "but the implementation file is missing.".format(self.name, lang))
@@ -58,7 +58,7 @@ class Template():
     def preprocess(self, parameters, lang):
         # if no template.py file exists, skip this preprocessing part
         if self.preprocessing_file_path is not None:
-            unique_dummy_module_name = "template_" + self.name
+            unique_dummy_module_name = f"template_{self.name}"
             preprocess_mod = imp.load_source(
                 unique_dummy_module_name, self.preprocessing_file_path)
             if not hasattr(preprocess_mod, "preprocess"):
@@ -69,12 +69,7 @@ class Template():
                 )
                 raise ValueError(msg)
             parameters = preprocess_mod.preprocess(parameters.copy(), lang)
-        # TODO: Remove this right after the variables in templates are renamed
-        # to lowercase
-        uppercases = dict()
-        for k, v in parameters.items():
-            uppercases[k.upper()] = v
-        return uppercases
+        return {k.upper(): v for k, v in parameters.items()}
 
     def looks_like_template(self):
         if not os.path.isdir(self.template_root_directory):
@@ -82,9 +77,7 @@ class Template():
         if os.path.islink(self.template_root_directory):
             return False
         template_sources = sorted(glob.glob(os.path.join(self.template_path, "*.template")))
-        if not os.path.isfile(self.template_yaml_path) and not template_sources:
-            return False
-        return True
+        return bool(os.path.isfile(self.template_yaml_path) or template_sources)
 
 
 class Builder(object):
@@ -105,15 +98,9 @@ class Builder(object):
         self.templates_dir = templates_dir
         self.remediations_dir = remediations_dir
         self.checks_dir = checks_dir
-        self.output_dirs = dict()
+        self.output_dirs = {}
         for lang in languages:
-            if lang == "oval":
-                # OVAL checks need to be put to a different directory because
-                # they are processed differently than remediations later in the
-                # build process
-                output_dir = self.checks_dir
-            else:
-                output_dir = self.remediations_dir
+            output_dir = self.checks_dir if lang == "oval" else self.remediations_dir
             dir_ = os.path.join(output_dir, lang)
             self.output_dirs[lang] = dir_
         # scan directory structure and dynamically create list of templates
@@ -133,7 +120,7 @@ class Builder(object):
         """
         if lang not in templates[template_name].langs:
             return
-        template_file_name = lang + ".template"
+        template_file_name = f"{lang}.template"
         template_file_path = os.path.join(self.templates_dir, template_name, template_file_name)
         ext = lang_to_ext_map[lang]
         output_file_name = rule_id + ext
@@ -151,22 +138,21 @@ class Builder(object):
         For a given rule returns list of languages that should be generated
         from templates. This is controlled by "template_backends" in rule.yml.
         """
-        if "backends" in rule.template:
-            backends = rule.template["backends"]
-            for lang in backends:
-                if lang not in languages:
-                    raise RuntimeError(
-                        "Rule {0} wants to generate unknown language '{1}"
-                        "from a template.".format(rule.id_, lang)
-                    )
-            langs_to_generate = []
-            for lang in languages:
-                backend = backends.get(lang, "on")
-                if backend == "on":
-                    langs_to_generate.append(lang)
-            return langs_to_generate
-        else:
+        if "backends" not in rule.template:
             return languages
+        backends = rule.template["backends"]
+        for lang in backends:
+            if lang not in languages:
+                raise RuntimeError(
+                    "Rule {0} wants to generate unknown language '{1}"
+                    "from a template.".format(rule.id_, lang)
+                )
+        langs_to_generate = []
+        for lang in languages:
+            backend = backends.get(lang, "on")
+            if backend == "on":
+                langs_to_generate.append(lang)
+        return langs_to_generate
 
     def process_product_vars(self, all_variables):
         """

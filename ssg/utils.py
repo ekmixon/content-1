@@ -52,8 +52,8 @@ def prodtype_to_name(prod):
         if prod == prod_type:
             return name
     if prod in MULTI_PLATFORM_LIST or prod == 'all':
-        return "multi_platform_" + prod
-    raise RuntimeError("Unknown product name: %s" % prod)
+        return f"multi_platform_{prod}"
+    raise RuntimeError(f"Unknown product name: {prod}")
 
 
 def name_to_platform(names):
@@ -62,7 +62,7 @@ def name_to_platform(names):
     <platform> elements.
     """
     if isinstance(names, str):
-        return "<platform>%s</platform>" % names
+        return f"<platform>{names}</platform>"
     return "\n".join(map(name_to_platform, names))
 
 
@@ -86,9 +86,7 @@ def parse_name(product):
 
     _product = product
     _product_version = None
-    match = PRODUCT_NAME_PARSER.match(product)
-
-    if match:
+    if match := PRODUCT_NAME_PARSER.match(_product):
         _product = match.group(1)
         _product_version = match.group(2)
 
@@ -107,8 +105,7 @@ def is_applicable_for_product(platform, product):
     product, product_version = parse_name(product)
 
     # Define general platforms
-    multi_platforms = ['multi_platform_all',
-                       'multi_platform_' + product]
+    multi_platforms = ['multi_platform_all', f'multi_platform_{product}']
 
     # First test if platform isn't for 'multi_platform_all' or
     # 'multi_platform_' + product
@@ -119,20 +116,16 @@ def is_applicable_for_product(platform, product):
     product_name = ""
     # Get official name for product
     if product_version is not None:
-        if product == "ubuntu" or product == "macos":
-            product_version = product_version[:2] + "." + product_version[2:]
-        product_name = map_name(product) + ' ' + product_version
+        if product in ["ubuntu", "macos"]:
+            product_version = f"{product_version[:2]}.{product_version[2:]}"
+        product_name = f'{map_name(product)} {product_version}'
     else:
         product_name = map_name(product)
 
-    # Test if this is for the concrete product version
-    for _name_part in platform.split(','):
-        if product_name == _name_part.strip():
-            return True
-
-    # Remediation script isn't neither a multi platform one, nor isn't
-    # applicable for this product => return False to indicate that
-    return False
+    return any(
+        product_name == _name_part.strip()
+        for _name_part in platform.split(',')
+    )
 
 
 def is_applicable(platform, product):
@@ -145,7 +138,7 @@ def is_applicable(platform, product):
     of products
     """
 
-    if platform == 'all' or platform == 'multi_platform_all':
+    if platform in ['all', 'multi_platform_all']:
         return True
 
     if is_applicable_for_product(platform, product):
@@ -236,10 +229,9 @@ def write_list_file(path, contents):
     """
 
     _contents = "\n".join(contents) + "\n"
-    _f = open(path, 'w')
-    _f.write(_contents)
-    _f.flush()
-    _f.close()
+    with open(path, 'w') as _f:
+        _f.write(_contents)
+        _f.flush()
 
 
 # Taken from https://stackoverflow.com/a/600612/592892
@@ -247,9 +239,7 @@ def mkdir_p(path):
     try:
         os.makedirs(path)
     except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
+        if exc.errno != errno.EEXIST or not os.path.isdir(path):
             raise
 
 
@@ -288,7 +278,7 @@ def banner_regexify(banner_text):
 
 
 def banner_anchor_wrap(banner_text):
-    return "^" + banner_text + "$"
+    return f"^{banner_text}$"
 
 
 def parse_template_boolean_value(data, parameter, default_value):
@@ -301,5 +291,5 @@ def parse_template_boolean_value(data, parameter, default_value):
         return False
     else:
         raise ValueError(
-            "Template parameter {} used in rule {} cannot accept the "
-            "value {}".format(parameter, data["_rule_id"], value))
+            f'Template parameter {parameter} used in rule {data["_rule_id"]} cannot accept the value {value}'
+        )

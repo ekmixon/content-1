@@ -33,10 +33,7 @@ JSON_FILENAME = "PCI_DSS.json"
 
 
 def autocorrect_pci_id(id_):
-    if id_ == "8.2.3a":
-        return "8.2.3.a"
-
-    return id_
+    return "8.2.3.a" if id_ == "8.2.3a" else id_
 
 
 def is_applicable_to_os(id_):
@@ -76,11 +73,7 @@ def harvest_ids_descriptions(page, id_map):
         # PCI-DSS PDF contains ID mistakes, let's fix the known ones
         id_candidate = autocorrect_pci_id(id_candidate)
 
-        # It is my understanding that this will match all valid PCI-DSS IDs
-        id_pattern = ""
-
-        # number followed by a dot
-        id_pattern += "^[1-9][0-9]*\\."
+        id_pattern = "" + "^[1-9][0-9]*\\."
         # second section, number plus optional letter
         id_pattern += "([1-9][0-9]*[a-z]?"
         # third section only if second section is present, number plus
@@ -187,7 +180,7 @@ def main():
     # top level IDs have different sorting rules
     id_tree = sorted(id_tree, key=lambda item: int(item[0].split(".", 1)[0]))
 
-    for id_ in id_map.keys():
+    for id_ in id_map:
         if id_ in handled_ids:
             continue
 

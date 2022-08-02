@@ -99,7 +99,7 @@ class TestEnv(object):
             stdout = common.run_with_stdout_logging(
                 "ssh", tuple(self.ssh_additional_options) + (remote_dest, command), log_file)
         except Exception as exc:
-            logging.error(error_msg + ": " + str(exc))
+            logging.error(f"{error_msg}: {str(exc)}")
             raise RuntimeError(error_msg)
         return stdout
 
@@ -120,7 +120,7 @@ class TestEnv(object):
             common.run_with_stdout_logging(
                 "scp", tuple(self.ssh_additional_options) + (source, destination), log_file)
         except Exception as exc:
-            error_msg = error_msg + ": " + str(exc)
+            error_msg = f"{error_msg}: {str(exc)}"
             logging.error(error_msg)
             raise RuntimeError(error_msg)
 
@@ -145,8 +145,8 @@ class TestEnv(object):
         pass
 
     def _oscap_ssh_base_arguments(self):
-        full_hostname = 'root@{}'.format(self.domain_ip)
-        return ['oscap-ssh', full_hostname, "{}".format(self.ssh_port), 'xccdf', 'eval']
+        full_hostname = f'root@{self.domain_ip}'
+        return ['oscap-ssh', full_hostname, f"{self.ssh_port}", 'xccdf', 'eval']
 
     def scan(self, args, verbose_path):
         if self.scanning_mode == "online":
@@ -224,12 +224,10 @@ class VMTestEnv(TestEnv):
         assert last_snapshot_name == state_name, (
             "You can only revert to the last snapshot, which is {0}, not {1}"
             .format(last_snapshot_name, state_name))
-        state = self.snapshot_stack.revert(delete=False)
-        return state
+        return self.snapshot_stack.revert(delete=False)
 
     def _save_state(self, state_name):
-        state = self.snapshot_stack.create(state_name)
-        return state
+        return self.snapshot_stack.create(state_name)
 
     def _delete_saved_state(self, snapshot):
         self.snapshot_stack.revert()
@@ -261,20 +259,15 @@ class ContainerTestEnv(TestEnv):
         self._terminate_current_running_container_if_applicable()
 
     def image_stem2fqn(self, stem):
-        image_name = "{0}_{1}".format(self.base_image, stem)
-        return image_name
+        return "{0}_{1}".format(self.base_image, stem)
 
     @property
     def current_container(self):
-        if self.containers:
-            return self.containers[-1]
-        return None
+        return self.containers[-1] if self.containers else None
 
     @property
     def current_image(self):
-        if self.created_images:
-            return self.created_images[-1]
-        return self.base_image
+        return self.created_images[-1] if self.created_images else self.base_image
 
     def _create_new_image(self, from_container, name):
         new_image_name = self.image_stem2fqn(name)
@@ -285,8 +278,7 @@ class ContainerTestEnv(TestEnv):
         return new_image_name
 
     def _save_state(self, state_name):
-        state = self._create_new_image(self.current_container, state_name)
-        return state
+        return self._create_new_image(self.current_container, state_name)
 
     def get_ssh_port(self):
         if self.domain_ip == 'localhost':
@@ -314,7 +306,7 @@ class ContainerTestEnv(TestEnv):
 
         # Assure that the -o option is followed by Port=<correct value> argument
         # If there is Port, assume that -o precedes it and just set the correct value
-        port_opt = ['-o', 'Port={}'.format(self.ssh_port)]
+        port_opt = ['-o', f'Port={self.ssh_port}']
         for index, opt in enumerate(ssh_additional_options):
             if opt.startswith('Port='):
                 ssh_additional_options[index] = port_opt[1]
@@ -338,9 +330,7 @@ class ContainerTestEnv(TestEnv):
         self._terminate_current_running_container_if_applicable()
         image_name = self.image_stem2fqn(state_name)
 
-        new_container = self.run_container(image_name, new_running_state_name)
-
-        return new_container
+        return self.run_container(image_name, new_running_state_name)
 
     def _delete_saved_state(self, image):
         self._terminate_current_running_container_if_applicable()
@@ -391,12 +381,8 @@ class DockerTestEnv(ContainerTestEnv):
             self.client = docker.from_env(version="auto")
             self.client.ping()
         except Exception as exc:
-            msg = (
-                "{}\n"
-                "Unable to start the Docker test environment, "
-                "is the Docker service started "
-                "and do you have rights to access it?"
-                .format(str(exc)))
+            msg = f"{str(exc)}\nUnable to start the Docker test environment, is the Docker service started and do you have rights to access it?"
+
             raise RuntimeError(msg)
 
     def _commit(self, container, image):
@@ -404,20 +390,21 @@ class DockerTestEnv(ContainerTestEnv):
 
     def _new_container_from_image(self, image_name, container_name):
         img = self.client.images.get(image_name)
-        result = self.client.containers.run(
-            img, "/usr/sbin/sshd -p {} -D".format(self.internal_ssh_port),
+        return self.client.containers.run(
+            img,
+            f"/usr/sbin/sshd -p {self.internal_ssh_port} -D",
             name="{0}_{1}".format(self._name_stem, container_name),
-            ports={"{}".format(self.internal_ssh_port): None},
-            detach=True)
-        return result
+            ports={f"{self.internal_ssh_port}": None},
+            detach=True,
+        )
 
     def get_ip_address(self):
         container = self.current_container
         container.reload()
-        container_ip = container.attrs["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
-        if not container_ip:
-            container_ip = 'localhost'
-        return container_ip
+        return (
+            container.attrs["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
+            or 'localhost'
+        )
 
     def _terminate_current_running_container_if_applicable(self):
         if self.containers:
@@ -458,18 +445,29 @@ class PodmanTestEnv(ContainerTestEnv):
         long_name = "{0}_{1}".format(self._name_stem, container_name)
         # Podman drops cap_audit_write which causes that it is not possible
         # run sshd by default. Therefore, we need to add the capability.
-        podman_cmd = ["podman", "run", "--name", long_name,
-                      "--cap-add=cap_audit_write",
-                      "--publish", "{}".format(self.internal_ssh_port), "--detach", image_name,
-                      "/usr/sbin/sshd", "-p", "{}".format(self.internal_ssh_port), "-D"]
+        podman_cmd = [
+            "podman",
+            "run",
+            "--name",
+            long_name,
+            "--cap-add=cap_audit_write",
+            "--publish",
+            f"{self.internal_ssh_port}",
+            "--detach",
+            image_name,
+            "/usr/sbin/sshd",
+            "-p",
+            f"{self.internal_ssh_port}",
+            "-D",
+        ]
+
         try:
             podman_output = subprocess.check_output(podman_cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             msg = "Command '{0}' returned {1}:\n{2}".format(
                 " ".join(e.cmd), e.returncode, e.output.decode("utf-8"))
             raise RuntimeError(msg)
-        container_id = podman_output.decode("utf-8").strip()
-        return container_id
+        return podman_output.decode("utf-8").strip()
 
     def get_ip_address(self):
         podman_cmd = [
@@ -482,10 +480,7 @@ class PodmanTestEnv(ContainerTestEnv):
             msg = "Command '{0}' returned {1}:\n{2}".format(
                 " ".join(e.cmd), e.returncode, e.output.decode("utf-8"))
             raise RuntimeError(msg)
-        ip_address = podman_output.decode("utf-8").strip()
-        if not ip_address:
-            ip_address = "localhost"
-        return ip_address
+        return podman_output.decode("utf-8").strip() or "localhost"
 
     def _get_container_ports(self, container):
         podman_cmd = ["podman", "inspect", container, "--format",
@@ -506,8 +501,7 @@ class PodmanTestEnv(ContainerTestEnv):
             container_port_with_protocol, host_data = podman_network_data.popitem()
             container_port = container_port_with_protocol.split("/")[0]
             host_port = host_data[0]['HostPort']
-        port_map = {int(container_port): int(host_port)}
-        return port_map
+        return {int(container_port): int(host_port)}
 
     def _terminate_current_running_container_if_applicable(self):
         if self.containers:

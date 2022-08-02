@@ -98,4 +98,4 @@ def test_subset_dict():
 
     assert ssg.utils.subset_dict(_dict, ["red fish"]) == {"red fish": "blue fish"}
     assert ssg.utils.subset_dict(_dict, [1, "red fish"]) == _dict
-    assert ssg.utils.subset_dict(_dict, []) == dict()
+    assert ssg.utils.subset_dict(_dict, []) == {}

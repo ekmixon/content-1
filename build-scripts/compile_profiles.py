@@ -42,8 +42,7 @@ def get_env_yaml(build_config_yaml, product_yaml):
     if build_config_yaml is None or product_yaml is None:
         return None
 
-    env_yaml = ssg.environment.open_environment(build_config_yaml, product_yaml)
-    return env_yaml
+    return ssg.environment.open_environment(build_config_yaml, product_yaml)
 
 
 def main():

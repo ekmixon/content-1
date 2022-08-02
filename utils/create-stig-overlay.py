@@ -29,9 +29,9 @@ def yes_no_prompt():
     while True:
         data = str(raw_input(prompt)).lower()
 
-        if data in ("yes", "y"):
+        if data in {"yes", "y"}:
             return True
-        elif data in ("n", "no"):
+        elif data in {"n", "no"}:
             return False
 
 
@@ -48,19 +48,24 @@ def ssg_xccdf_stigid_mapping(ssgtree):
     xccdftostig_idmapping = {}
 
     for rule in ssgtree.findall(".//{%s}Rule" % xccdf_ns):
-        srgs = []
         rhid = ""
 
         xccdfid = rule.get("id")
         if xccdfid is not None:
+            srgs = []
             for references in stig_ns:
-                stig = [ids for ids in rule.findall(".//{%s}reference[@href='%s']" % (xccdf_ns, references))]
+                stig = list(
+                    rule.findall(
+                        ".//{%s}reference[@href='%s']" % (xccdf_ns, references)
+                    )
+                )
+
                 for ref in reversed(stig):
                     if not ref.text.startswith("SRG-"):
                         rhid = ref.text
                     else:
                         srgs.append(ref.text)
-            xccdftostig_idmapping.update({rhid: {xccdfid: srgs}})
+            xccdftostig_idmapping[rhid] = {xccdfid: srgs}
 
     return xccdftostig_idmapping
 
@@ -81,11 +86,7 @@ def getkey(elem):
 
 
 def new_stig_overlay(xccdftree, ssgtree, outfile):
-    if not ssgtree:
-        ssg_mapping = False
-    else:
-        ssg_mapping = ssg_xccdf_stigid_mapping(ssgtree)
-
+    ssg_mapping = ssg_xccdf_stigid_mapping(ssgtree) if ssgtree else False
     new_stig_overlay = ET.Element("overlays", xmlns=xccdf_ns)
     for group in xccdftree.findall("./{%s}Group" % xccdf_ns):
         vkey = group.get("id").strip('V-')
@@ -164,11 +165,14 @@ def main():
         ssg_xccdftree = ET.parse(args.ssg_xccdf_filename)
         ssg = ssg_xccdftree.find(".//{%s}publisher" % dc_ns).text
         if ssg != "SCAP Security Guide Project":
-            sys.exit("%s is not a valid SSG generated XCCDF file." % args.ssg_xccdf_filename)
+            sys.exit(f"{args.ssg_xccdf_filename} is not a valid SSG generated XCCDF file.")
 
     disa = disa_xccdftree.find(".//{%s}source" % dc_ns).text
     if disa != "STIG.DOD.MIL":
-        sys.exit("%s is not a valid DISA generated manual XCCDF file." % args.disa_xccdf_filename)
+        sys.exit(
+            f"{args.disa_xccdf_filename} is not a valid DISA generated manual XCCDF file."
+        )
+
 
     new_stig_overlay(disa_xccdftree, ssg_xccdftree, args.output_file)
 

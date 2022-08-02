@@ -34,8 +34,9 @@ def add_minimum_version(ansible_src):
             return ansible_src
 
         raise ValueError(
-            "A pre_task already exists in ansible_src; failing to process: %s" %
-            ansible_src)
+            f"A pre_task already exists in ansible_src; failing to process: {ansible_src}"
+        )
+
 
     return ansible_src.replace(" - hosts: all", pre_task, 1)
 
